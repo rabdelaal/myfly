@@ -1,0 +1,11 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-chess==1.999
+torch==2.5.0
+numpy==2.1.0
+scipy==1.14.0
+pandas==2.2.3
+pyarrow>=18.0
+pydantic==2.9.0
+websockets==13.0
+tqdm==4.66.5

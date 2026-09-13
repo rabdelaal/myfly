@@ -1,0 +1,21 @@
+# Données volumineuses (téléchargeables via scripts/download_malecns.sh)
+data/*.feather
+data/*.npz
+
+# caches Python
+__pycache__/
+*.pyc
+
+# état / artefacts locaux
+backend/tamagotchi_state.json
+backend/*.pt.best
+tools/htc-core/*.exe
+tools/spear-demo/node_modules/
+
+# captures de debug
+*.png
+
+# Binaires lourds / redondants (récupérables : apt install stockfish,
+# ou https://stockfishchess.org/download/ pour Windows)
+tools/stockfish/**/*.exe
+tools/stockfish/**/*.zip

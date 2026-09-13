@@ -1,0 +1,139 @@
+{
+  "wsyn_mv": 0.164,
+  "n_neurons": 183490,
+  "n_synapses": 25963816,
+  "conditions": {
+    "_reflex_intact_hz": 201.25,
+    "intact (témoin)": {
+      "lesioned": 0,
+      "reflex_mn9_hz": 201.25,
+      "reflex_deficit": 0.0,
+      "spont_hz_per_neuron": 145.83499145507812,
+      "spont_motor_hz": 18.407590866088867,
+      "motor_specificity": 4.4372159525685184e-05,
+      "motor_patterns_hz": [
+        17.629262128547737,
+        17.65309781891809,
+        17.48624788377151,
+        17.645763737140317
+      ]
+    },
+    "corps du champignon (MB)": {
+      "lesioned": 4064,
+      "reflex_mn9_hz": 201.25,
+      "reflex_deficit": 0.0,
+      "spont_hz_per_neuron": 139.13966369628906,
+      "spont_motor_hz": 18.248075485229492,
+      "motor_specificity": 4.0824802580607944e-05,
+      "motor_patterns_hz": [
+        17.664098923486975,
+        17.585257762729533,
+        17.5650891124612,
+        17.563255600672218
+      ]
+    },
+    "complexe central (CX)": {
+      "lesioned": 2950,
+      "reflex_mn9_hz": 200.625,
+      "reflex_deficit": 0.0031055808067321777,
+      "spont_hz_per_neuron": 140.5400390625,
+      "spont_motor_hz": 18.241199493408203,
+      "motor_specificity": 2.108418937385448e-05,
+      "motor_patterns_hz": [
+        17.680600560799945,
+        17.6677659145414,
+        17.605426436079085,
+        17.550420995068105
+      ]
+    },
+    "dimorphes mâle/femelle": {
+      "lesioned": 2368,
+      "reflex_mn9_hz": 200.625,
+      "reflex_deficit": 0.0031055808067321777,
+      "spont_hz_per_neuron": 143.32203674316406,
+      "spont_motor_hz": 17.95792007446289,
+      "motor_specificity": 2.2021110020697954e-05,
+      "motor_patterns_hz": [
+        17.1268786581436,
+        17.207553318493698,
+        17.09570887274999,
+        17.148880839478984
+      ]
+    },
+    "fruitless/doublesex": {
+      "lesioned": 5012,
+      "reflex_mn9_hz": 200.0,
+      "reflex_deficit": 0.0062111616134643555,
+      "spont_hz_per_neuron": 140.2367401123047,
+      "spont_motor_hz": 18.033552169799805,
+      "motor_specificity": 3.761159596749053e-05,
+      "motor_patterns_hz": [
+        17.128712169932584,
+        17.264392357061404,
+        16.917857660056473,
+        17.27722698627132
+      ]
+    },
+    "neurones descendants": {
+      "lesioned": 1314,
+      "reflex_mn9_hz": 138.125,
+      "reflex_deficit": 0.31366461515426636,
+      "spont_hz_per_neuron": 143.93821716308594,
+      "spont_motor_hz": 15.115510940551758,
+      "motor_specificity": 2.1757007059641786e-05,
+      "motor_patterns_hz": [
+        14.231755948171626,
+        14.27759389882565,
+        14.255591702802215,
+        14.272093341688905
+      ]
+    },
+    "lobes optiques": {
+      "lesioned": 89394,
+      "reflex_mn9_hz": 200.625,
+      "reflex_deficit": 0.0031055808067321777,
+      "spont_hz_per_neuron": 56.779563903808594,
+      "spont_motor_hz": 18.07205581665039,
+      "motor_specificity": 2.383373776826403e-05,
+      "motor_patterns_hz": [
+        17.605426411292996,
+        17.654931333461086,
+        17.46974625944173,
+        17.579757225657715
+      ]
+    },
+    "témoin aléatoire ~4k": {
+      "lesioned": 4000,
+      "reflex_mn9_hz": 200.625,
+      "reflex_deficit": 0.0031055808067321777,
+      "spont_hz_per_neuron": 140.5507354736328,
+      "spont_motor_hz": 17.726898193359375,
+      "motor_specificity": 1.821132311663476e-05,
+      "motor_patterns_hz": [
+        17.134212714217284,
+        17.181884134038707,
+        17.15254788981019,
+        17.16354894900348
+      ]
+    },
+    "témoin aléatoire ~89k": {
+      "lesioned": 89000,
+      "reflex_mn9_hz": 29.375,
+      "reflex_deficit": 0.8540372848510742,
+      "spont_hz_per_neuron": 46.848411560058594,
+      "spont_motor_hz": 3.974147319793701,
+      "motor_specificity": 7.115180538141974e-05,
+      "motor_patterns_hz": [
+        4.163916204366485,
+        4.110744272259334,
+        3.685368399940046,
+        4.108910724799363
+      ]
+    }
+  },
+  "assays_ms": {
+    "reflex": 800,
+    "spont": 800,
+    "discrimination": 600
+  }
+}
