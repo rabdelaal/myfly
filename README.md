@@ -1,6 +1,13 @@
-# FlyChess
+# FlyChess — démo live : https://rabdelaal.github.io/myfly/
 
 Élevez une mouche Tamagotchi dont le cerveau est une simulation du connectome de la drosophile mâle — et défiez-la aux échecs.
+
+**Deux régimes :** la démo en ligne tourne **100 % dans le navigateur**
+(cerveau synthétique 5 000 neurones en Web Worker, readout non entraîné —
+même encodeur 788 features, parité bit-exacte avec le backend, testée dans
+`frontend/`). Le **vrai MaleCNS** (183 490 neurones, readout, salons
+multijoueurs, théâtre live, lésions) demande le backend local (ci-dessous) —
+le frontend bascule tout seul, ou forcez avec `?api=http://localhost:8000`.
 
 ## Mode Tamagotchi
 
