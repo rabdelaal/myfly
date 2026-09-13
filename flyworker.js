@@ -98,7 +98,19 @@ function buildNet(n, seed) {
     indices[p] = rows[2 * k];
     vals[p] = data[k];
   }
-  return { n, ns, nm, indptr, indices, vals, isSens, isMot, isDesc, nnz: data.length };
+  // CSC (colonnes = pré) pour le scatter sur neurones actifs uniquement
+  const cCnt = new Int32Array(n);
+  for (let k = 0; k < data.length; k++) cCnt[rows[2 * k]]++;
+  const colptr = new Int32Array(n + 1);
+  for (let i = 0; i < n; i++) colptr[i + 1] = colptr[i] + cCnt[i];
+  const rowidx = new Int32Array(data.length), cvals = new Float32Array(data.length);
+  const cfill = Int32Array.from(colptr.subarray(0, n));
+  for (let k = 0; k < data.length; k++) {
+    const p = cfill[rows[2 * k]]++;
+    rowidx[p] = rows[2 * k + 1];
+    cvals[p] = data[k];
+  }
+  return { n, ns, nm, indptr, indices, vals, colptr, rowidx, cvals, isSens, isMot, isDesc, nnz: data.length };
 }
 
 function buildEncoder(ns, seed) {
@@ -146,33 +158,44 @@ function simulate(net, currents, B, steps, recordEvery, collectFrames, wsyn) {
   // silencieux car il ne vit que de la moyenne ; ici kicks mV absolus +
   // drive Poisson, régime prouvé vivant sur le vrai connectome.
   // V en mV (-52/-45), g en mV (tau_syn=5), délai 2 pas, réfractaire 3 pas.
-  const { n, ns, indptr, indices, vals } = net;
+  const { n, ns, colptr, rowidx, cvals } = net;
   const W = wsyn === undefined ? CFG.wsyn : wsyn;
   const decay = fastExp(CFG.dt / CFG.tausyn), leakK = CFG.dt / CFG.tau;
-  const V = new Float32Array(n * B).fill(CFG.vrest);
+  // Hot loop : tout en locaux (pas de lookup d'objet/propriété par neurone)
+  const VTH = CFG.vth, VREST = CFG.vrest, VRST = CFG.vreset;
+  const REFR = CFG.refr, STIMP = CFG.stimP, NM = net.nm, MOTB = n - NM;
+  const rnd = Math.random;
+  const V = new Float32Array(n * B).fill(VREST);
   const G = new Float32Array(n * B), RF = new Uint8Array(n * B);
   let Sp = new Uint8Array(n * B);
   const delay = [new Uint8Array(n * B), new Uint8Array(n * B)];
-  const motorSum = new Float32Array(B * net.nm), framesAll = [];
+  const motorSum = new Float32Array(B * NM), framesAll = [];
   let nRec = 0;
-  const motBase = n - net.nm; // moteurs = 20 % finaux (data_loader)
   for (let s = 0; s < steps; s++) {
     const delayed = delay.shift();
     delay.push(Sp.slice());
     for (let b = 0; b < B; b++) {
       const off = b * n;
+      // 1) décroissance synaptique (tenseur plein, pas cher)
+      for (let i = 0; i < n; i++) G[off + i] *= decay;
+      // 2) scatter événementiel : seuls les pré-synaptiques actifs paient.
+      // ~6-7 % d'activité mesurée → ~15× moins de MAC que le full CSR.
+      for (let pre = 0; pre < n; pre++) {
+        if (!delayed[off + pre]) continue;
+        for (let k = colptr[pre]; k < colptr[pre + 1]; k++) {
+          G[off + rowidx[k]] += cvals[k] * W;
+        }
+      }
+      // 3) intégration + spikes
       for (let post = 0; post < n; post++) {
-        let inc = 0;
-        for (let k = indptr[post]; k < indptr[post + 1]; k++) inc += vals[k] * delayed[off + indices[k]];
         const idx = off + post;
-        G[idx] = G[idx] * decay + inc * W;
-        V[idx] += (-(V[idx] - CFG.vrest) + G[idx]) * leakK;
+        V[idx] += (-(V[idx] - VREST) + G[idx]) * leakK;
         let sp = 0;
         if (RF[idx] > 0) RF[idx]--;
-        else if (V[idx] >= CFG.vth) { V[idx] = CFG.vreset; RF[idx] = CFG.refr; sp = 1; }
+        else if (V[idx] >= VTH) { V[idx] = VRST; RF[idx] = REFR; sp = 1; }
         if (post < ns) {
-          const p = currents[b * ns + post] * CFG.stimP;
-          if (Math.random() < (p > 1 ? 1 : p > 0 ? p : 0)) sp = 1;
+          const p = currents[b * ns + post] * STIMP;
+          if (rnd() < (p > 1 ? 1 : p > 0 ? p : 0)) sp = 1;
         }
         Sp[idx] = sp;
       }
@@ -182,14 +205,14 @@ function simulate(net, currents, B, steps, recordEvery, collectFrames, wsyn) {
       const fr = [];
       for (let b = 0; b < B; b++) {
         const off = b * n, col = [];
-        for (let m = 0; m < net.nm; m++) motorSum[b * net.nm + m] += Sp[off + motBase + m];
+        for (let m = 0; m < NM; m++) motorSum[b * NM + m] += Sp[off + MOTB + m];
         if (collectFrames) for (let i = 0; i < n && col.length < 2000; i++) if (Sp[off + i]) col.push(i);
         fr.push(col);
       }
       if (collectFrames) framesAll.push(fr);
     }
   }
-  const motorMean = new Float32Array(B * net.nm);
+  const motorMean = new Float32Array(B * NM);
   for (let k = 0; k < motorMean.length; k++) motorMean[k] = motorSum[k] / Math.max(nRec, 1);
   return { motorMean, framesAll, T: nRec };
 }
