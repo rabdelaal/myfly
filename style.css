@@ -1,0 +1,407 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0a0a0f;
+  color: #e0e0e8;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #1e1e28;
+}
+header h1 {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+.subtitle {
+  color: #6a6a7a;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  height: calc(100vh - 90px);
+}
+section {
+  background: #0f0f18;
+  border: 1px solid #1e1e28;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+canvas { width: 100%; flex: 1; border-radius: 8px; background: #06060a; }
+#status {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #8a8a9a;
+  min-height: 1.2em;
+}
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.room-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.room-controls input {
+  background: #1a1a24;
+  border: 1px solid #2e2e3e;
+  color: #e0e0e8;
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+.room-status {
+  font-size: 0.8rem;
+  color: #9fd8ff;
+  margin-top: 0.4rem;
+  min-height: 1.1em;
+}
+button {
+  background: #1a1a24;
+  border: 1px solid #2e2e3e;
+  color: #e0e0e8;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+button:hover { background: #24243a; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.stats div {
+  background: #16161f;
+  border-radius: 6px;
+  padding: 0.5rem;
+  text-align: center;
+}
+.stats span { display: block; font-size: 0.7rem; color: #6a6a7a; }
+.stats strong { display: block; font-size: 1rem; margin-top: 0.2rem; }
+#candidates {
+  overflow-y: auto;
+  max-height: 200px;
+}
+.candidate {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  font-size: 0.8rem;
+}
+.candidate .bar {
+  flex: 1;
+  height: 6px;
+  background: #1a1a24;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.candidate .bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #4a6eff, #6affb0);
+}
+
+/* --- Onglets --- */
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.tabs button { flex: 0 0 auto; }
+.tabs button.active {
+  background: #2e2e4e;
+  border-color: #4a6eff;
+}
+
+.hidden { display: none !important; }
+#chess-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#chess-view canvas { flex: 1; min-height: 0; }
+
+/* --- Panneau Tamagotchi --- */
+#pet-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 0.75rem;
+}
+#fly-stage {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: radial-gradient(circle at 50% 40%, #16202a 0%, #06060a 70%);
+  border-radius: 8px;
+  font-size: 6rem;
+}
+#fly-zzz {
+  font-size: 2rem;
+  animation: zzz-float 2.5s ease-in-out infinite;
+}
+@keyframes zzz-float {
+  0%, 100% { transform: translateY(0) rotate(-10deg); opacity: 0.6; }
+  50%      { transform: translateY(-14px) rotate(5deg); opacity: 1; }
+}
+#fly-stage.sleeping #fly-emoji { filter: brightness(0.6); }
+#fly-stage.mood-ravie #fly-emoji { animation: fly-bounce 1.2s ease-in-out infinite; }
+#fly-stage.mood-contente #fly-emoji { animation: fly-bob 3s ease-in-out infinite; }
+#fly-stage.mood-grognon #fly-emoji { animation: fly-shake 0.5s ease-in-out infinite; }
+.fly-wings { transform-origin: 60px 44px; animation: flutter 0.22s ease-in-out infinite alternate; }
+#fly-stage.sleeping .fly-wings { animation: none; opacity: 0.35; }
+@keyframes flutter {
+  from { transform: scaleY(1); }
+  to   { transform: scaleY(0.55); }
+}
+@keyframes fly-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-18px) scale(1.06); }
+}
+@keyframes fly-bob {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(8px, -6px); }
+}
+@keyframes fly-shake {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
+}
+#pet-message {
+  font-size: 0.9rem;
+  color: #b8b8c8;
+  min-height: 1.4em;
+  text-align: center;
+}
+.stat-bars { display: flex; flex-direction: column; gap: 0.4rem; }
+.stat-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 34px;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #8a8a9a;
+}
+.stat-row b { text-align: right; color: #e0e0e8; }
+.stat-bar {
+  height: 10px;
+  background: #1a1a24;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.stat-bar > div { height: 100%; border-radius: 5px; transition: width 0.4s; }
+.stat-bar > div.good { background: linear-gradient(90deg, #4a6eff, #6affb0); }
+.stat-bar > div.warn { background: linear-gradient(90deg, #d8a028, #f0d060); }
+.stat-bar > div.bad  { background: linear-gradient(90deg, #b03030, #f06060); }
+.pet-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.pet-controls button { font-size: 0.8rem; padding: 0.5rem 0.25rem; }
+#pet-meta {
+  font-size: 0.75rem;
+  color: #6a6a7a;
+  text-align: center;
+}
+
+/* --- En-tête du panneau cerveau --- */
+.brain-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: #8a8a9a;
+}
+#btn-theater {
+  background: linear-gradient(90deg, #2a1a4e, #1a2a4e);
+  border-color: #6a4aff;
+}
+#btn-live.live-on {
+  background: #123a2a;
+  border-color: #6affb0;
+  color: #6affb0;
+}
+#btn-sound.on {
+  background: #3a2a12;
+  border-color: #ffb04a;
+  color: #ffb04a;
+}
+.brain-legend {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: #8a8a9a;
+  margin: 0.4rem 0 0.2rem;
+}
+.brain-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: -1px;
+  box-shadow: 0 0 6px currentColor;
+}
+.dimorphism-card {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #c9a0dc;
+  background: rgba(255, 77, 210, 0.07);
+  border: 1px solid rgba(255, 77, 210, 0.25);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  margin: 0.3rem auto;
+  max-width: 520px;
+}
+
+/* --- Théâtre du cerveau (plein écran) --- */
+#theater {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #020208;
+}
+#theater.hidden { display: none; }
+#theater-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at 50% 45%, #0a0a18 0%, #020208 70%);
+}
+#theater-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  pointer-events: none;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.th-title {
+  font-size: 1.1rem;
+  letter-spacing: 0.25em;
+  color: #b8b8ff;
+  text-shadow: 0 0 18px rgba(106, 74, 255, 0.8);
+}
+.th-hz {
+  display: flex;
+  gap: 1.25rem;
+}
+.th-hz div {
+  background: rgba(10, 10, 24, 0.75);
+  border: 1px solid #26263e;
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.7rem;
+  color: #6a6a7a;
+  text-align: center;
+}
+.th-hz b {
+  display: block;
+  font-size: 1.05rem;
+  color: #6affb0;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.th-meta {
+  color: #8a8a9a;
+  font-size: 0.8rem;
+  padding-top: 0.5rem;
+}
+#theater-close {
+  pointer-events: auto;
+  background: #1a1a24;
+  border: 1px solid #2e2e3e;
+  color: #e0e0e8;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#theater-close:hover { background: #24243a; }
+#theater-caption {
+  position: absolute;
+  bottom: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.15rem;
+  color: #ffe8b0;
+  text-shadow: 0 0 22px rgba(255, 200, 100, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  max-width: 80vw;
+}
+#theater-caption.caption-show {
+  animation: caption-fade 4s ease forwards;
+}
+@keyframes caption-fade {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(14px); }
+  12%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* --- ⚗️ Labo des lésions virtuelles --- */
+#lab-view { display: flex; flex-direction: column; gap: 0.75rem; }
+.lab-intro {
+  font-size: 0.82rem;
+  color: #9a9ab0;
+  line-height: 1.45;
+  margin: 0;
+}
+#lab-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.lab-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: #1a1a24;
+  border: 1px solid #2e2e3e;
+  color: #e0e0e8;
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+}
+.lab-group small { color: #8a8aa0; font-size: 0.72rem; }
+.lab-group:hover { background: #24243a; }
+.lab-group.lesion-on {
+  border-color: #c0392b;
+  background: #2a1a1e;
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.35);
+}
+#lab-result {
+  font-size: 0.82rem;
+  color: #c8c8d8;
+  min-height: 2.4em;
+  line-height: 1.4;
+}
