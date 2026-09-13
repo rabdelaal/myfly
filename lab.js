@@ -1,5 +1,5 @@
-// ⚗️ Labo des lésions virtuelles : sélection d'une population, grisation
-// dans le cerveau WebGL, test du réflexe d'alimentation à la demande.
+// ⚗️ Virtual-lesion lab: pick a population, gray it out in the WebGL brain,
+// and test the feeding reflex on demand.
 const LabUI = {
   current: null,
 
@@ -20,9 +20,9 @@ const LabUI = {
       return `
       <button class="lab-group ${info.current === g.key ? 'lesion-on' : ''}"
               data-key="${g.key}"
-              title="${g.n.toLocaleString('fr-FR')} neurones lésés — déficit prédit ${pred}">
+              title="${g.n.toLocaleString('en-US')} lesioned neurons — predicted deficit ${pred}">
         ${g.name}
-        <small>${g.n.toLocaleString('fr-FR')} neur · déficit prédit ${pred}</small>
+        <small>${g.n.toLocaleString('en-US')} neur · pred. deficit ${pred}</small>
       </button>`;
     }).join('');
     el.querySelectorAll('.lab-group').forEach(btn => {
@@ -30,7 +30,7 @@ const LabUI = {
     });
     if (connectome) connectome.setLesion(window.__labDisplay);
     if (!this.current) {
-      document.getElementById('lab-result').textContent = 'Cerveau intact.';
+      document.getElementById('lab-result').textContent = 'Brain intact.';
     }
   },
 
@@ -38,10 +38,10 @@ const LabUI = {
     try {
       const r = await api('/api/lab/lesion', { key });
       document.getElementById('lab-result').textContent =
-        `⚗️ ${r.name} lésée (${r.lesioned.toLocaleString('fr-FR')} neurones) — ` +
-        `la mouche joue et réagit avec ce handicap.`;
+        `⚗️ ${r.name} lesioned (${r.lesioned.toLocaleString('en-US')} neurons) — ` +
+        `the fly plays and reacts with this handicap.`;
     } catch (e) {
-      document.getElementById('lab-result').textContent = 'Erreur : ' + e.message;
+      document.getElementById('lab-result').textContent = 'Error: ' + e.message;
     }
     await this.refresh();
   },
@@ -55,17 +55,17 @@ const LabUI = {
     const btn = document.getElementById('btn-lab-test');
     const res = document.getElementById('lab-result');
     btn.disabled = true;
-    res.textContent = '🧪 Simulation du réflexe en cours… (drive 100 Hz sur ' +
-      'les GRN sucrées, ~45 s sur le vrai connectome)';
+    res.textContent = '🧪 Running reflex simulation… (100 Hz drive on the ' +
+      'sweet GRNs, ~45 s on the full connectome)';
     try {
       const r = await api('/api/lab/test-reflex', {});
       const pct = r.deficit !== null && r.deficit !== undefined
         ? (r.deficit * 100).toFixed(0) + ' %' : '—';
       res.innerHTML =
-        `🧪 Réflexe MN9 : <b>${r.mn9_hz} Hz</b> (intact : ${r.baseline_hz} Hz) ` +
-        `→ déficit <b>${pct}</b> · lésion : ${r.current || 'aucune'}`;
+        `🧪 MN9 reflex: <b>${r.mn9_hz} Hz</b> (intact: ${r.baseline_hz} Hz) ` +
+        `→ deficit <b>${pct}</b> · lesion: ${r.current || 'none'}`;
     } catch (e) {
-      res.textContent = 'Erreur : ' + e.message;
+      res.textContent = 'Error: ' + e.message;
     } finally {
       btn.disabled = false;
     }

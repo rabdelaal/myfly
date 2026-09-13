@@ -24,7 +24,7 @@ const BrowserMode = {
     const roomBox = document.querySelector('.room-controls');
     if (roomBox) roomBox.style.display = 'none';
     const rs = document.getElementById('room-status');
-    if (rs) rs.textContent = 'Salons multijoueurs = backend uniquement';
+    if (rs) rs.textContent = 'Multiplayer rooms = backend only';
 
     this.worker = new Worker('flyworker.js');
     this.worker.onmessage = (e) => {
@@ -110,7 +110,7 @@ const BrowserMode = {
   async playMove(uci) {
     if (busy) return;
     busy = true;
-    setStatus('La mouche réfléchit (cerveau local)…');
+    setStatus('The fly is thinking (local brain)…');
     try {
       const mv = this.game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || 'q' });
       if (!mv) { busy = false; return; }
@@ -175,7 +175,7 @@ const BrowserMode = {
     PetUI.render();
     if (!currentState.game_over && currentState.turn === 'white') setStatus('À toi — clique une pièce');
     else if (!currentState.game_over) setStatus('Trait aux noirs…');
-    else setStatus('Partie terminée : ' + (currentState.result || '—'));
+    else setStatus('Game over: ' + (currentState.result || '—'));
   },
 
   // --- Tamagotchi local (mêmes taux que backend, état en localStorage) ---

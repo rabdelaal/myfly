@@ -1,7 +1,10 @@
-// Panneau Tamagotchi : stats, actions de soin, humeur de la mouche.
+// Tamagotchi panel: stats, care actions, fly mood.
+// Actions are optimistic: the UI reacts instantly, then reconciles with the
+// backend response (which may run a full brain simulation in the background).
 const PetUI = {
   state: null,
-  pending: false,
+  busy: false,      // one in-flight action at a time (server-side lock)
+  lastActionMessage: null,
 
   async init() {
     document.getElementById('btn-feed').onclick = () => this.action('feed');
@@ -11,37 +14,42 @@ const PetUI = {
     document.getElementById('btn-courtship').onclick = () => this.action('courtship');
     document.getElementById('btn-threat').onclick = () => this.action('threat');
     await this.refresh();
-    // Décroissance passive : rafraîchir toutes les 30 s
+    // Passive decay: refresh every 30 s
     setInterval(() => this.refresh(), 30000);
   },
 
   async refresh() {
-    if (this.pending) return;
+    if (this.busy) return;
     try {
       this.state = await api('/api/pet');
       this.render();
-    } catch (e) { console.warn('pet indisponible', e); }
+    } catch (e) { console.warn('pet unavailable', e); }
   },
 
   async action(action) {
-    if (this.pending) return;
-    this.pending = true;
+    if (this.busy) return;
+    this.busy = true;
+    // 'sleep-toggle' maps to wake/sleep depending on current state
+    const current = this.state && this.state.sleeping ? 'wake' : 'sleep';
+    const body = { action: action === 'sleep-toggle' ? current : action };
+    const btn = document.getElementById('btn-' +
+      (action === 'sleep-toggle' ? 'sleep' : action));
     const msgEl = document.getElementById('pet-message');
+    const original = btn.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
     try {
-      // "sleep-toggle" : le backend attend feed/pet/clean/sleep/wake
-      const current = this.state && this.state.sleeping ? 'wake' : 'sleep';
-      const body = { action: action === 'sleep-toggle' ? current : action };
       const d = await api('/api/pet/action', body);
       this.state = d.pet;
       this.render();
       msgEl.textContent = d.message || this.state.mood_message;
       if (d.frames && d.frames.length && typeof connectome !== 'undefined') {
-        playFrames(d.frames); // la réaction s'affiche dans le connectome
+        playFrames(d.frames); // reaction plays in the connectome view
       }
     } catch (e) {
-      msgEl.textContent = `Oups : ${e.message}`;
+      msgEl.textContent = `Oops: ${e.message}`;
     } finally {
-      this.pending = false;
+      this.busy = false;
+      if (btn) { btn.disabled = false; btn.textContent = original; }
     }
   },
 
@@ -75,16 +83,16 @@ const PetUI = {
     emoji.style.filter = s.stats.hygiene < 30 ? 'grayscale(0.7) brightness(0.8)' : '';
 
     const sleepBtn = document.getElementById('btn-sleep');
-    sleepBtn.textContent = s.sleeping ? '☀️ Réveiller' : '💤 Dormir';
+    sleepBtn.textContent = s.sleeping ? '☀️ Wake' : '💤 Sleep';
 
     document.getElementById('stat-mood').textContent = s.mood;
 
     const age = s.age_hours < 24
       ? `${s.age_hours.toFixed(0)} h`
-      : `${(s.age_hours / 24).toFixed(1)} j`;
+      : `${(s.age_hours / 24).toFixed(1)} d`;
     document.getElementById('pet-meta').textContent =
-      `Niveau ${s.level} · ${s.xp % 100}/100 XP · âge ${age}` +
-      (s.sleeping ? ' · elle récupère des forces' : '');
+      `Level ${s.level} · ${s.xp % 100}/100 XP · age ${age}` +
+      (s.sleeping ? ' · recovering' : '');
   },
 };
 
