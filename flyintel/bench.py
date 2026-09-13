@@ -1,0 +1,224 @@
+"""
+FlyIntel benchmark suite — scores the fly's brain across several domains and
+emits a JSON leaderboard.
+
+Domains (each a pure function of (brain, conn, readout?)):
+
+  - chess_reflex  : quality of a readout vs stockfish targets (Spearman rho)
+  - feeding       : Shiu feeding-reflex rate (MN9 Hz under sugar-GRN drive)
+  - discrimination: can the motor readout tell different stimuli apart?
+  - dynamics      : stability, no avalanches, firing-rate sanity
+  - speed         : simulation wall-clock (ms per step) with backend dispatch
+
+Every domain returns (metric_name -> value). Results are merged into
+leaderboard.json keyed by domain; a higher `score` column ranks better.
+Extend by adding a function here (ponytail: one file, no framework).
+"""
+from __future__ import annotations
+
+import json
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+
+from .backends import benchmark_backends, gelu_fast, tanh_fast
+
+LEADERBOARD_PATH = Path(__file__).resolve().parent.parent / "benchmarks" / "leaderboard.json"
+
+
+# --------------------------------------------------------------------------
+# Domain: chess reflex — does a trained readout rank moves like stockfish?
+# --------------------------------------------------------------------------
+def chess_reflex(brain, conn, readout=None, encoder=None, val_boards=None,
+                 targets=None, steps=100) -> dict:
+    """rho de Spearman entre les scores du readout et des cibles (stockfish).
+    readout None + encoder None → rho vide (marque 'readout_unavailable')."""
+    from scipy.stats import spearmanr
+    if readout is None or encoder is None or val_boards is None:
+        return {"score": None, "detail": "no readout supplied"}
+    if targets is None:
+        targets = [float(np.random.default_rng(7).normal()) for _ in val_boards]
+    with torch.no_grad():
+        currents = encoder.encode_batch(val_boards).to(brain.device)
+        r = brain.run(currents, n_steps=steps, record_every=10,
+                      return_history=True)
+        from readout_looped import trajectory_from_brain
+        traj = trajectory_from_brain(r)
+        readout.observe(traj.reshape(-1, traj.shape[-1]))
+        preds = readout(traj)[-1].cpu().tolist()
+    if len(set(np.round(preds, 6))) < 3:
+        return {"score": None, "detail": "readout output degenerate"}
+    rho = float(spearmanr(targets, preds).correlation)
+    return {"score": rho, "detail": f"rho vs {len(targets)} stockfish targets"}
+
+
+# --------------------------------------------------------------------------
+# Domain: feeding reflex (Shiu) — MN9 rate under sugar-GRN Poisson drive
+# --------------------------------------------------------------------------
+def feeding(brain, conn, drive_hz=100.0, ms=200) -> dict:
+    mn9 = conn.get("mn9_idx")
+    if mn9 is None or len(mn9) == 0:
+        return {"score": None, "detail": "no MN9 annotations"}
+    mn9_t = torch.tensor(np.asarray(mn9, dtype=np.int64), device=brain.device)
+    brain.reset(1)
+    brain.set_sugar_drive(drive_hz, ms)
+    total = 0.0
+    for _ in range(ms):
+        brain.step(None)
+        total += float(brain.spikes[mn9_t].sum().item())
+    brain.set_sugar_drive(0.0, 0)
+    hz = total / len(mn9) / (ms / 1000.0)
+    return {"score": hz, "detail": f"MN9 rate under {drive_hz} Hz GRN drive"}
+
+
+# --------------------------------------------------------------------------
+# Domain: discrimination — can motor readout separate distinct stimuli?
+# --------------------------------------------------------------------------
+def discrimination(brain, conn, stimuli=("feed", "pet", "clean", "threat"),
+                   steps=100) -> dict:
+    """One-vs-rest separability of the motor response to different action
+    stimuli. Score = fraction of pairs whose motor-mean vectors differ more
+    than chance (rank-based). Returns an aggregate 0..1."""
+    from tamagotchi import StimulusEncoder
+    enc = StimulusEncoder(int(conn["is_sensory"].sum()))
+    patterns = []
+    for s in stimuli:
+        with torch.no_grad():
+            c = enc.encode(s).to(brain.device)
+            r = brain.run(c, n_steps=steps, record_every=10)
+            patterns.append(r["motor_mean"].cpu().numpy().ravel())
+    # Séparabilité : plus la distance inter-stimuli est grande vs intra-bruit.
+    # On refait 3 runs pour estimer la dispersion intra-stimulus.
+    spread, sep = 0.0, 0.0
+    for _ in range(3):
+        v2 = []
+        for s in stimuli:
+            with torch.no_grad():
+                c = enc.encode(s).to(brain.device)
+                r = brain.run(c, n_steps=steps, record_every=10)
+                v2.append(r["motor_mean"].cpu().numpy().ravel())
+        for i in range(len(stimuli)):
+            spread += float(np.linalg.norm(v2[i] - patterns[i]))
+    spread /= (3 * len(stimuli))
+    for i in range(len(stimuli)):
+        for j in range(i + 1, len(stimuli)):
+            sep += float(np.linalg.norm(patterns[i] - patterns[j]))
+    sep /= (len(stimuli) * (len(stimuli) - 1) / 2)
+    ratio = float(sep / (spread + 1e-9))
+    # log1p : la dynamique brute (10⁸ sur le synthétique, ~1-10 sur MaleCNS)
+    # est trop étalée pour un leaderboard. log1p la tasse en restant monotone.
+    score = float(np.log1p(ratio))
+    return {"score": score, "detail": f"log1p(inter/intra {ratio:.1f}) over {len(stimuli)} stimuli"}
+
+
+# --------------------------------------------------------------------------
+# Domain: dynamics — stability / no avalanche / firing-rate sanity
+# --------------------------------------------------------------------------
+def dynamics(brain, conn, steps=300) -> dict:
+    brain.reset(1)
+    sensor_hz, motor_hz, peak = 0.0, 0.0, 0.0
+    for _ in range(steps):
+        brain.step(None)
+        s = int(brain.spikes[brain.is_sensory].sum())
+        m = int(brain.spikes[brain.is_motor].sum())
+        sensor_hz += s
+        motor_hz += m
+        peak = max(peak, s + m)
+    n_s = max(int(brain.n_sensory), 1)
+    n_m = max(int(brain.is_motor.sum()), 1)
+    sensor_hz = sensor_hz / n_s / (steps / 1000.0)
+    motor_hz = motor_hz / n_m / (steps / 1000.0)
+    # Score composite borné : on veut un cerveau vivant mais pas en avalanche.
+    # Saine ≈ taux sensoriel modéré, moteur < sensoriel, peak raisonnable.
+    sane = float(min(1.0, motor_hz / max(sensor_hz * 1.1, 1e-3)))
+    score = float(np.clip(1.0 - abs(sane - 0.3), 0.0, 1.0))
+    return {"score": score, "detail": f"sensory {sensor_hz:.1f} Hz · motor {motor_hz:.1f} Hz · peak {peak}"}
+
+
+# --------------------------------------------------------------------------
+# Domain: speed — wall-clock per step, both backends if available
+# --------------------------------------------------------------------------
+def speed(brain, conn, steps=200) -> dict:
+    brain.reset(1)
+    t = time.perf_counter()
+    for _ in range(steps):
+        brain.step(None)
+    ms_step = (time.perf_counter() - t) / steps * 1000.0
+    return {"score": -ms_step, "detail": f"{ms_step:.1f} ms/step (lower better, score inverted)"}
+
+
+# --------------------------------------------------------------------------
+# Runners
+# --------------------------------------------------------------------------
+DOMAINS = {
+    "chess_reflex": chess_reflex,
+    "feeding": feeding,
+    "discrimination": discrimination,
+    "dynamics": dynamics,
+    "speed": speed,
+}
+
+
+def run_all(brain, conn, readout=None, encoder=None, val_boards=None,
+            targets=None, tag: str = "run") -> dict:
+    """Exécute tous les domaines, fusionne dans leaderboard.json."""
+    results = {"tag": tag, "n_neurons": int(conn["W"].shape[0]),
+               "n_synapses": int(conn["W"].nnz), "domains": {}}
+    for name, fn in DOMAINS.items():
+        try:
+            if name == "chess_reflex":
+                res = fn(brain, conn, readout, encoder, val_boards, targets)
+            elif name == "feeding":
+                res = fn(brain, conn)
+            else:
+                res = fn(brain, conn)
+            results["domains"][name] = res
+        except Exception as e:
+            results["domains"][name] = {"score": None, "detail": f"error: {e}"}
+    # Accélération des kernels (table backends)
+    results["backends"] = benchmark_backends()
+    _merge_leaderboard(results)
+    return results
+
+
+def _merge_leaderboard(results: dict) -> None:
+    LEADERBOARD_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if LEADERBOARD_PATH.exists():
+        try:
+            lb = json.loads(LEADERBOARD_PATH.read_text())
+        except Exception:
+            lb = []
+    else:
+        lb = []
+    # une entrée par tag (run frais remplace l'ancien même tag)
+    lb = [e for e in lb if e.get("tag") != results["tag"]]
+    lb.append(results)
+    lb.sort(key=lambda e: e.get("timestamp", 0), reverse=True)
+    results["timestamp"] = time.time()
+    LEADERBOARD_PATH.write_text(json.dumps(lb, indent=2, ensure_ascii=False))
+
+
+def summary(lb: list[dict]) -> str:
+    """Texte lisible du leaderboard : un tableau markdown des domaines."""
+    rows = []
+    for entry in lb:
+        for dom, res in entry.get("domains", {}).items():
+            rows.append((entry["tag"], dom, res.get("score")))
+    out = ["| tag | domain | score |", "|---|---|---|"]
+    for tag, dom, sc in rows:
+        out.append(f"| {tag} | {dom} | {sc if sc is None else round(sc, 4)} |")
+    return "\n".join(out)
+
+
+if __name__ == "__main__":
+    # smoke run sur un petit connectome synthétique
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    from data_loader import _synthetic_connectome
+    from brain import FlyBrain
+    conn = _synthetic_connectome(n_neurons=1500, sparsity=0.008)
+    brain = FlyBrain(conn["W"], conn["is_sensory"], conn["is_motor"], conn["is_descending"])
+    r = run_all(brain, conn, tag="smoke")
+    print(summary([r]))

@@ -1,0 +1,172 @@
+[
+  {
+    "tag": "malecns-v1",
+    "n_neurons": 183490,
+    "n_synapses": 25963816,
+    "domains": {
+      "chess_reflex": {
+        "score": null,
+        "detail": "no readout supplied"
+      },
+      "feeding": {
+        "score": 130.0,
+        "detail": "MN9 rate under 100.0 Hz GRN drive"
+      },
+      "discrimination": {
+        "score": 0.703163117209531,
+        "detail": "log1p(inter/intra 1.0) over 4 stimuli"
+      },
+      "dynamics": {
+        "score": 0.7,
+        "detail": "sensory 0.0 Hz · motor 0.0 Hz · peak 0.0"
+      },
+      "speed": {
+        "score": -71.03261399985058,
+        "detail": "71.0 ms/step (lower better, score inverted)"
+      }
+    },
+    "backends": {
+      "n": 1000000,
+      "device": "cpu",
+      "torch_threads": 4,
+      "gelu_torch_ms": 1.3524999997268121,
+      "tanh_torch_ms": 1.9818899997820454,
+      "gelu_spear_ms": 15.681833333413428,
+      "tanh_spear_ms": 10.796896665124223,
+      "spear_available": true,
+      "use_spear_gelu": false,
+      "use_spear_tanh": false,
+      "gelu_libm_ms": 68.18676999925326,
+      "use_spear_gelu_algebraic": true,
+      "sigmoid_spear_ms": 8.459210000000894,
+      "sigmoid_libm_ms": 13.25651999989835,
+      "use_spear_sigmoid": true
+    },
+    "timestamp": 1789337806.192204
+  },
+  {
+    "tag": "smoke2",
+    "n_neurons": 5000,
+    "n_synapses": 113456,
+    "domains": {
+      "chess_reflex": {
+        "score": null,
+        "detail": "no readout supplied"
+      },
+      "feeding": {
+        "score": null,
+        "detail": "no MN9 annotations"
+      },
+      "discrimination": {
+        "score": 20.77594599475899,
+        "detail": "log1p(inter/intra 1054092447.0) over 4 stimuli"
+      },
+      "dynamics": {
+        "score": 0.7,
+        "detail": "sensory 0.0 Hz · motor 0.0 Hz · peak 0.0"
+      },
+      "speed": {
+        "score": -1.2317274999804795,
+        "detail": "1.2 ms/step (lower better, score inverted)"
+      }
+    },
+    "backends": {
+      "n": 1000000,
+      "device": "cpu",
+      "torch_threads": 4,
+      "gelu_torch_ms": 3.246190001179154,
+      "tanh_torch_ms": 5.27947666705586,
+      "gelu_spear_ms": 6.590283332237353,
+      "tanh_spear_ms": 17.171143332961947,
+      "spear_available": true,
+      "use_spear_gelu": false,
+      "use_spear_tanh": false
+    },
+    "timestamp": 1789336954.1444485
+  },
+  {
+    "tag": "smoke",
+    "n_neurons": 1500,
+    "n_synapses": 16317,
+    "domains": {
+      "chess_reflex": {
+        "score": null,
+        "detail": "no readout supplied"
+      },
+      "feeding": {
+        "score": null,
+        "detail": "no MN9 annotations"
+      },
+      "discrimination": {
+        "score": 258780789.87201053,
+        "detail": "inter/intra motor-vector ratio over 4 stimuli"
+      },
+      "dynamics": {
+        "score": 0.7,
+        "detail": "sensory 0.0 Hz · motor 0.0 Hz · peak 0.0"
+      },
+      "speed": {
+        "score": -0.146041999978479,
+        "detail": "0.1 ms/step (lower better, score inverted)"
+      }
+    },
+    "backends": {
+      "n": 1000000,
+      "device": "cpu",
+      "torch_threads": 4,
+      "gelu_torch_ms": 0.963443333360677,
+      "tanh_torch_ms": 1.3829033336757373,
+      "gelu_spear_ms": 2.6509599993005395,
+      "tanh_spear_ms": 8.802399999694899,
+      "spear_available": true,
+      "use_spear_gelu": false,
+      "use_spear_tanh": false
+    },
+    "timestamp": 1789336869.5360353
+  },
+  {
+    "tag": "malecns-readout",
+    "n_neurons": 183490,
+    "n_synapses": 25963816,
+    "domains": {
+      "chess_reflex": {
+        "score": null,
+        "detail": "error: LinearReadout.forward() missing 1 required positional argument: 'descending'"
+      },
+      "feeding": {
+        "score": 127.5,
+        "detail": "MN9 rate under 100.0 Hz GRN drive"
+      },
+      "discrimination": {
+        "score": 0.8087035581018902,
+        "detail": "log1p(inter/intra 1.2) over 4 stimuli"
+      },
+      "dynamics": {
+        "score": 0.7,
+        "detail": "sensory 0.0 Hz · motor 0.0 Hz · peak 0.0"
+      },
+      "speed": {
+        "score": -51.262040000001434,
+        "detail": "51.3 ms/step (lower better, score inverted)"
+      }
+    },
+    "backends": {
+      "n": 1000000,
+      "device": "cpu",
+      "torch_threads": 4,
+      "gelu_torch_ms": 0.6225766672287136,
+      "tanh_torch_ms": 0.9926633327268064,
+      "gelu_spear_ms": 9.684759999314945,
+      "tanh_spear_ms": 7.453566665450732,
+      "spear_available": true,
+      "use_spear_gelu": false,
+      "use_spear_tanh": false,
+      "gelu_libm_ms": 46.118436666438356,
+      "use_spear_gelu_algebraic": true,
+      "sigmoid_spear_ms": 5.910389998462051,
+      "sigmoid_libm_ms": 10.499533333738023,
+      "use_spear_sigmoid": true
+    },
+    "timestamp": 1789338038.8837664
+  }
+]

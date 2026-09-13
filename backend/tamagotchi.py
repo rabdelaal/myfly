@@ -219,9 +219,15 @@ class FlyPet:
 
     # --- Réaction neuronale à une action ---
     @torch.no_grad()
-    def react(self, action: str) -> dict:
+    def react(self, action: str, n_steps: int | None = None) -> dict:
+        if n_steps is None:
+            # ponytail: 200 pas sur MaleCNS = ~30 s (clic fantôme). Cap inversement
+            # proportionnel à la taille du cerveau : lisible sur le petit connectome,
+            # quasi instantané sur le gros. Upgrade si un vrai readout arrive.
+            n_neurons = len(self.brain.network.n) if hasattr(self.brain, "network") else 0
+            n_steps = 200 if n_neurons < 100_000 else max(8, min(24, 200 * 5_000 // n_neurons))
         currents = self.encoder.encode(action).to(self.brain.device)
-        result = self.brain.run(currents, n_steps=200, record_every=10)
+        result = self.brain.run(currents, n_steps=n_steps, record_every=max(1, n_steps // 10))
         motor_mean = float(result["motor_mean"].mean().item())
         strength = float(np.tanh(motor_mean * 300.0))  # 0..1
         bucket = "strong" if strength >= 0.35 else "weak"

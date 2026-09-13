@@ -2,7 +2,7 @@ const API = window.FLY_API || '';
 let board3d, connectome;
 let currentState = null;      // dernier /api/state ou réponse de /api/move
 let selectedSquare = null;    // case sélectionnée (0..63)
-let busy = false;             // la mouche réfléchit
+let busy = false;             // the fly is thinking
 
 async function api(path, body = null) {
   const r = await fetch(API + path, {
@@ -19,7 +19,7 @@ function setStatus(msg) {
   // Le status est dans l'onglet échecs (masqué par défaut) : rendre les
   // messages visibles aussi sur le panneau Tamagotchi.
   const pm = document.getElementById('pet-message');
-  if (pm && pm.textContent === 'Chargement…') pm.textContent = msg;
+  if (pm && pm.textContent === 'Loading…') pm.textContent = msg;
 }
 
 function isPlayersTurn() {
@@ -116,11 +116,11 @@ async function refreshState(data) {
   if (data.fen) board3d.setPosition(data.fen);
   deselect();
   if (data.game_over) {
-    setStatus(`Partie terminée : ${data.result || '—'}`);
+    setStatus(`Game over: ${data.result || '—'}`);
   } else if (data.turn === 'black') {
-    setStatus('La mouche réfléchit…');
+    setStatus('The fly is thinking…');
   } else {
-    setStatus('À vous de jouer — cliquez une pièce blanche');
+    setStatus('Your turn — click a white piece');
   }
   if (data.scores) renderCandidates(data.scores);
   // Priorité à la réaction neuronale du Tamagotchi au coup qu'elle vient de jouer
@@ -196,7 +196,7 @@ function wsSend(obj) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(obj));
   } else {
-    setStatus('Non connecté au backend — recharge la page');
+    setStatus('Not connected to backend — reload the page');
   }
 }
 
@@ -213,11 +213,11 @@ function connectWS() {  try {
           document.getElementById('pet-message').textContent = m.data.pet_reaction.message;
         }
         if (currentState && !currentState.game_over && currentState.turn === 'white') {
-          setStatus('À vous de jouer — cliquez une pièce blanche');
+          setStatus('Your turn — click a white piece');
         }
       } else if (m.type === 'error') {
         busy = false;
-        setStatus(`Erreur : ${m.detail}`);
+        setStatus(`Error: ${m.detail}`);
       } else if (m.type === 'room') {
         roomInfo = m.data;
         // Le plateau suit le salon (premier affichage + coups adverses)
@@ -235,7 +235,7 @@ async function playMove(uci) {
     return BrowserMode.playMove(uci);
   }
   busy = true;
-  setStatus('La mouche réfléchit…');
+  setStatus('The fly is thinking…');
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'move', move: uci }));
     return; // la réponse arrive via ws.onmessage
@@ -248,11 +248,11 @@ async function playMove(uci) {
       document.getElementById('pet-message').textContent = data.pet_reaction.message;
     }
   } catch (err) {
-    setStatus(`Erreur : ${err.message}`);
+    setStatus(`Error: ${err.message}`);
   } finally {
     busy = false;
     if (currentState && !currentState.game_over && currentState.turn === 'white') {
-      setStatus('À vous de jouer — cliquez une pièce blanche');
+      setStatus('Your turn — click a white piece');
     }
   }
 }
@@ -267,14 +267,14 @@ function renderRoom() {
   }
   leaveBtn.classList.remove('hidden');
   const r = roomInfo;
-  const role = r.role === 'spec' ? 'spectateur' : `tu joues les ${r.role === 'white' ? 'blancs' : 'noirs'}`;
-  el.textContent = `Salon ${r.code} · ${role} · ♔${r.white} ♚${r.black}` +
+  const role = r.role === 'spec' ? 'spectator' : `you play ${r.role === 'white' ? 'white' : 'black'}`;
+  el.textContent = `Room ${r.code} · ${role} · ♔${r.white} ♚${r.black}` +
     (r.spectators ? ` · 👁 ${r.spectators}` : '') +
-    (r.game_over ? ' · terminée' : ` · trait aux ${r.turn === 'white' ? 'blancs' : 'noirs'}`);
+    (r.game_over ? ' · over' : ` · ${r.turn === 'white' ? 'white' : 'black'} to move`);
   const mine = (r.turn === 'white' && r.role === 'white') || (r.turn === 'black' && r.role === 'black');
-  setStatus(r.game_over ? `Partie terminée — salon ${r.code}` :
-    mine ? `À toi (${r.code}) — clique une pièce` :
-    r.role === 'spec' ? `Tu regardes (${r.code})` : `Adversaire en cours (${r.code})…`);
+  setStatus(r.game_over ? `Game over — room ${r.code}` :
+    mine ? `Your turn (${r.code}) — click a piece` :
+    r.role === 'spec' ? `Watching (${r.code})` : `Opponent moving (${r.code})…`);
 }
 
 function renderCandidates(scores) {  const el = document.getElementById('candidates');
@@ -416,9 +416,9 @@ async function init() {
     await refreshState(s);
   };
   document.getElementById('btn-hint').onclick = async () => {
-    setStatus('La mouche calcule un indice…');
+    setStatus('The fly is computing a hint…');
     const d = await api('/api/hint');
-    if (d.hint) setStatus(`Indice : ${d.hint}`);
+    if (d.hint) setStatus(`Hint: ${d.hint}`);
     if (d.scores) renderCandidates(d.scores);
   };
   document.getElementById('btn-room-create').onclick = () => wsSend({ type: 'create', fly: true });
@@ -451,7 +451,7 @@ async function init() {
 
 init().catch(err => {
   console.error(err);
-  const msg = `Erreur : ${err.message} — le backend tourne-t-il sur ${API || 'ce serveur'} ?`;
+  const msg = `Error: ${err.message} — is the backend running on ${API || 'this server'} ?`;
   setStatus(msg);
   const pm = document.getElementById('pet-message');
   if (pm) pm.textContent = msg;

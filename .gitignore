@@ -9,6 +9,8 @@ __pycache__/
 # état / artefacts locaux
 backend/tamagotchi_state.json
 backend/*.pt.best
+*.pt.best
+rl_smoke.pt
 tools/htc-core/*.exe
 tools/spear-demo/node_modules/
 

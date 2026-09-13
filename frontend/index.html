@@ -1,31 +1,32 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FlyChess — Élevez votre mouche</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <title>FlyChess — Raise your fly</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
     <h1>FlyChess</h1>
     <p class="subtitle">
-      Drosophila melanogaster · <span id="backend-status">connexion au backend…</span>
+      Drosophila melanogaster · <span id="backend-status">connecting to backend…</span>
     </p>
   </header>
 
   <main>
     <section id="left-panel">
       <div class="tabs">
-        <button id="tab-pet" class="active">🪰 Mouche</button>
-        <button id="tab-chess">♟️ Échecs</button>
-        <button id="tab-lab" title="Lésions virtuelles sur le connectome">⚗️ Labo</button>
+        <button id="tab-pet" class="active">🪰 Fly</button>
+        <button id="tab-chess">♟️ Chess</button>
+        <button id="tab-lab" title="Virtual lesions on the connectome">⚗️ Lab</button>
       </div>
 
-      <!-- Panneau Tamagotchi -->
+      <!-- Tamagotchi panel -->
       <div id="pet-view">
         <div id="fly-stage">
-          <svg id="fly-emoji" viewBox="0 0 120 100" width="150" height="125" aria-label="mouche">
+          <svg id="fly-emoji" viewBox="0 0 120 100" width="150" height="125" aria-label="fly">
             <g class="fly-wings">
               <ellipse cx="30" cy="44" rx="24" ry="8" fill="#9fd8ff" opacity="0.55" transform="rotate(-24 30 44)"/>
               <ellipse cx="90" cy="44" rx="24" ry="8" fill="#9fd8ff" opacity="0.55" transform="rotate(24 90 44)"/>
@@ -48,108 +49,109 @@
           </svg>
           <span id="fly-zzz">💤</span>
         </div>
-        <div id="pet-message">Chargement…</div>
+        <div id="pet-message">Loading…</div>
         <div class="stat-bars">
-          <div class="stat-row"><span>Satiété</span><div class="stat-bar"><div id="bar-satiety"></div></div><b id="val-satiety">—</b></div>
-          <div class="stat-row"><span>Humeur</span><div class="stat-bar"><div id="bar-happiness"></div></div><b id="val-happiness">—</b></div>
-          <div class="stat-row"><span>Énergie</span><div class="stat-bar"><div id="bar-energy"></div></div><b id="val-energy">—</b></div>
-          <div class="stat-row"><span>Propreté</span><div class="stat-bar"><div id="bar-hygiene"></div></div><b id="val-hygiene">—</b></div>
+          <div class="stat-row"><span>Satiety</span><div class="stat-bar"><div id="bar-satiety"></div></div><b id="val-satiety">—</b></div>
+          <div class="stat-row"><span>Happiness</span><div class="stat-bar"><div id="bar-happiness"></div></div><b id="val-happiness">—</b></div>
+          <div class="stat-row"><span>Energy</span><div class="stat-bar"><div id="bar-energy"></div></div><b id="val-energy">—</b></div>
+          <div class="stat-row"><span>Hygiene</span><div class="stat-bar"><div id="bar-hygiene"></div></div><b id="val-hygiene">—</b></div>
         </div>
         <div class="pet-controls">
-          <button id="btn-feed">🍯 Nourrir</button>
-          <button id="btn-pet-cuddle">🥰 Caresser</button>
-          <button id="btn-clean">🚿 Laver</button>
-          <button id="btn-sleep">💤 Dormir</button>
-          <button id="btn-courtship" title="Parade nuptiale : stimulus olfactif vers les hotspots fru/dsx">🎻 Parader</button>
-          <button id="btn-threat" title="Intimidation : stimulus mécanosensoriel vers la voie agression">😠 Menacer</button>
+          <button id="btn-feed">🍯 Feed</button>
+          <button id="btn-pet-cuddle">🥰 Pet</button>
+          <button id="btn-clean">🚿 Wash</button>
+          <button id="btn-sleep">💤 Sleep</button>
+          <button id="btn-courtship" title="Courtship: olfactory stimulus toward the fru/dsx hotspots">🎻 Court</button>
+          <button id="btn-threat" title="Threat: mechanosensory stimulus toward the aggression pathway">😠 Threaten</button>
         </div>
         <div id="pet-meta">—</div>
       </div>
 
-      <!-- Panneau échecs (mini-jeu) -->
+      <!-- Chess panel (mini-game) -->
       <div id="chess-view" class="hidden">
         <canvas id="board-canvas"></canvas>
-        <div id="status">Chargement…</div>
+        <div id="status">Loading…</div>
         <div class="controls">
-          <button id="btn-new">Nouvelle partie</button>
-          <button id="btn-undo">Annuler</button>
-          <button id="btn-hint">Indice</button>
+          <button id="btn-new">New game</button>
+          <button id="btn-undo">Undo</button>
+          <button id="btn-hint">Hint</button>
         </div>
         <div class="room-controls">
-          <button id="btn-room-create" title="Crée un salon : tu joues les blancs, la mouche les noirs">⚔️ Salon + mouche</button>
-          <button id="btn-room-create-h2h" title="Crée un salon 2 humains (rapide, sans simu)">👥 Salon 2P</button>
+          <button id="btn-room-create" title="Creates a room: you play white, the fly plays black">⚔️ Room + fly</button>
+          <button id="btn-room-create-h2h" title="Creates a 2-human room (fast, no simulation)">👥 Room 2P</button>
           <input id="room-code" placeholder="CODE" maxlength="4" size="5" />
-          <button id="btn-room-join">Rejoindre</button>
-          <button id="btn-room-leave" class="hidden">Quitter</button>
+          <button id="btn-room-join">Join</button>
+          <button id="btn-room-leave" class="hidden">Leave</button>
         </div>
         <div id="room-status" class="room-status"></div>
       </div>
 
-      <!-- Panneau ⚗️ Labo : lésions virtuelles -->
+      <!-- ⚗️ Lab panel: virtual lesions -->
       <div id="lab-view" class="hidden">
         <p class="lab-intro">
-          Lésionne une population du connectome (annotations MaleCNS, papier
-          Cell 2026) : ses neurones sont <b>grisés</b> dans le cerveau et ne
-          tirent plus — regardes-le vivre dans le théâtre, puis mesure le
-          déficit du réflexe d'alimentation.
+          Lesion a population of the connectome (MaleCNS annotations, Cell
+          2026 paper): its neurons are <b>grayed out</b> in the brain and stop
+          firing — watch it live in the theater, then measure the feeding
+          reflex deficit.
         </p>
-        <div id="lab-groups">Chargement…</div>
+        <div id="lab-groups">Loading…</div>
         <div class="controls">
-          <button id="btn-lab-clear">🩹 Guérir</button>
-          <button id="btn-lab-test">🧪 Tester le réflexe</button>
+          <button id="btn-lab-clear">🩹 Heal</button>
+          <button id="btn-lab-test">🧪 Test reflex</button>
         </div>
-        <div id="lab-result">Cerveau intact.</div>
+        <div id="lab-result">Brain intact.</div>
       </div>
     </section>
 
     <section id="brain-panel">
       <div class="brain-header">
-        <span>Cerveau de la mouche <span id="gl-status"></span></span>
+        <span>Fly brain <span id="gl-status"></span></span>
         <span style="display:flex; gap:0.5rem;">
-          <button id="btn-sound">🔊 Son</button>
+          <button id="btn-sound">🔊 Sound</button>
           <button id="btn-live">⚡ Live</button>
-          <button id="btn-theater">🎬 Cerveau en direct</button>
+          <button id="btn-theater">🎬 Brain live</button>
         </span>
       </div>
       <canvas id="connectome-canvas"></canvas>
       <div class="brain-legend">
-        <span><i style="background:#33b3ff"></i> Sensoriels</span>
-        <span><i style="background:#8c66e6"></i> Interneurones</span>
-        <span><i style="background:#4dff80"></i> Moteurs</span>
-        <span><i style="background:#ff9933"></i> Descendants</span>
-        <span title="Neurones male-specific / dimorphes / fru+ / dsx+ (Cell 2026)"><i style="background:#ff4dd2"></i> Hotspots ♂</span>
+        <span><i style="background:#33b3ff"></i> Sensory</span>
+        <span><i style="background:#8c66e6"></i> Interneurons</span>
+        <span><i style="background:#4dff80"></i> Motor</span>
+        <span><i style="background:#ff9933"></i> Descending</span>
+        <span title="Male-specific / dimorphic / fru+ / dsx+ neurons (Cell 2026)"><i style="background:#ff4dd2"></i> Hotspots ♂</span>
       </div>
       <div class="stats">
-        <div><span>Neurones</span><strong id="stat-neurons">—</strong></div>
+        <div><span>Neurons</span><strong id="stat-neurons">—</strong></div>
         <div><span>Synapses</span><strong id="stat-synapses">—</strong></div>
-        <div><span>Humeur</span><strong id="stat-mood">—</strong></div>
+        <div><span>Mood</span><strong id="stat-mood">—</strong></div>
       </div>
       <div id="dimorphism-card" class="dimorphism-card" hidden></div>
       <div id="candidates"></div>
     </section>
   </main>
 
-  <!-- Théâtre du cerveau : plein écran -->
+  <!-- Brain theater: fullscreen -->
   <div id="theater" class="hidden">
     <canvas id="theater-canvas"></canvas>
     <div id="theater-hud">
-      <div class="th-title">◆ CERVEAU EN DIRECT</div>
+      <div class="th-title">◆ BRAIN LIVE</div>
       <div class="th-hz">
-        <div><span>Sensoriels</span><b id="th-hz-sensory">0.0</b> Hz</div>
-        <div><span>Interneurones</span><b id="th-hz-inter">0.0</b> Hz</div>
-        <div><span>Moteurs</span><b id="th-hz-motor">0.0</b> Hz</div>
-        <div><span>Descendants</span><b id="th-hz-desc">0.0</b> Hz</div>
+        <div><span>Sensory</span><b id="th-hz-sensory">0.0</b> Hz</div>
+        <div><span>Inter</span><b id="th-hz-inter">0.0</b> Hz</div>
+        <div><span>Motor</span><b id="th-hz-motor">0.0</b> Hz</div>
+        <div><span>Desc</span><b id="th-hz-desc">0.0</b> Hz</div>
         <div><span>♂ Hotspots</span><b id="th-hz-hotspot">0.0</b> Hz</div>
         <div><span>fru/dsx</span><b id="th-hz-fru">0.0</b> Hz</div>
       </div>
       <div class="th-meta"><span id="th-mood">—</span> · octopamine <span id="th-octo">×1.00</span></div>
-      <button id="theater-close">✕ Quitter</button>
+      <button id="theater-close">✕ Exit</button>
     </div>
     <div id="theater-caption"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js"></script>
+  <!-- UMD builds only (classic scripts, no ESM): chess.js 0.10.3 + three 0.149.0 -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.min.js"></script>
   <script>
     window.FLY_API = new URLSearchParams(location.search).get('api')
       ?? window.FLY_API ?? 'http://localhost:8000';
