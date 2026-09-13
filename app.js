@@ -231,6 +231,9 @@ function connectWS() {  try {
 
 async function playMove(uci) {
   if (busy) return;
+  if (window.LOCAL_MODE && typeof BrowserMode !== 'undefined') {
+    return BrowserMode.playMove(uci);
+  }
   busy = true;
   setStatus('La mouche réfléchit…');
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -327,6 +330,21 @@ async function init() {
   connCanvas.height = connCanvas.clientHeight * window.devicePixelRatio;
 
   board3d = new Chess3D(boardCanvas, onSquareClick);
+
+  // Sans backend : bascule 100 % navigateur (GitHub Pages) au lieu de mourir
+  try {
+    await Promise.race([
+      fetch(API + '/api/info').then((r) => { if (!r.ok) throw new Error('pas de backend'); }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout backend')), 2500)),
+    ]);
+  } catch (e) {
+    if (typeof BrowserMode !== 'undefined' && typeof Chess !== 'undefined') {
+      await BrowserMode.start({ connCanvas });
+      return;
+    }
+    document.getElementById('backend-status').textContent =
+      'Pas de backend (lance uvicorn ou sers cette page avec chess.js + browser.js)';
+  }
 
   const info = await api('/api/info');
   document.getElementById('stat-neurons').textContent = info.n_neurons.toLocaleString();

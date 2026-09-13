@@ -149,12 +149,18 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script>window.FLY_API = 'http://localhost:8000';</script>
+  <script src="https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js"></script>
+  <script>
+    window.FLY_API = new URLSearchParams(location.search).get('api')
+      ?? window.FLY_API ?? 'http://localhost:8000';
+  </script>
   <script src="chess3d.js"></script>
   <script src="connectome.js"></script>
   <script src="pet.js"></script>
   <script src="theater.js"></script>
   <script src="lab.js"></script>
+  <script src="spear.js"></script>
   <script src="app.js"></script>
+  <script src="browser.js"></script>
 </body>
 </html>
