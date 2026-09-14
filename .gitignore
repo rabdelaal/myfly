@@ -22,6 +22,10 @@ finetune.log
 finetune_err.log
 readout_looped.pt
 
+# état triple-helix (persistant entre sessions, local)
+helix_state.json
+helix_ff_state.json
+
 # Binaires lourds / redondants (récupérables : apt install stockfish,
 # ou https://stockfishchess.org/download/ pour Windows)
 tools/stockfish/**/*.exe
