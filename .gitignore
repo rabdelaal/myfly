@@ -30,6 +30,9 @@ bench_after_finetune.log
 helix_state.json
 helix_ff_state.json
 
+# données apprises par le modèle via websearch.learn()
+knowledge/
+
 # Binaires lourds / redondants (récupérables : apt install stockfish,
 # ou https://stockfishchess.org/download/ pour Windows)
 tools/stockfish/**/*.exe

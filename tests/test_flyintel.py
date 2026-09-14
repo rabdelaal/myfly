@@ -124,9 +124,25 @@ def test_benchmark_smoke():
         print("ok test_benchmark_smoke")
 
 
+def test_websearch():
+    import requests as _rq
+    from flyintel import websearch
+    try:
+        res = websearch.search("connectome", num=2)
+        assert res and res[0]["url"].startswith("http"), res
+        assert res[0]["source"] in ("exa", "duckduckgo")
+    except _rq.RequestException as e:
+        print(f"   [websearch] réseau indisponible, skip ({e})")
+        return
+    with tempfile.TemporaryDirectory() as td:
+        saved = websearch.learn("connectome", dir=td, num=1, sleep_s=0)
+        assert saved and Path(saved[0]).exists()
+    print("ok test_websearch")
+
+
 if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
-               test_benchmark_smoke]:
+               test_benchmark_smoke, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")

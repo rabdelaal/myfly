@@ -50,6 +50,7 @@ from . import bench  # noqa: E402     (run_all, summary, leaderboard)
 from . import train  # noqa: E402     (train_looped)
 from . import spear_math  # noqa: E402  (formules champions superspear, benchmarkées)
 from . import readouts_spear  # noqa: E402  (readouts à activations Spear)
+from . import websearch  # noqa: E402  (search/learn web — Exa ou DuckDuckGo)
 
 __all__ = [
     "FlyBrain",
