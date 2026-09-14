@@ -16,6 +16,7 @@ import scipy.sparse as _sp
 _DLL_PATH = Path(__file__).parent / "native" / "lif_alpha_ed.dll"
 
 _int_p = ctypes.POINTER(ctypes.c_int32)
+_int16_p = ctypes.POINTER(ctypes.c_int16)
 _float_p = ctypes.POINTER(ctypes.c_float)
 
 
@@ -36,6 +37,16 @@ def _load_dll():
         _float_p,                        # spikes_out
     ]
     dll.lif_alpha_ed_step.restype = None
+    dll.lif_alpha_ed_step_i16.argtypes = [
+        _int_p, _int_p, _int16_p,        # colptr, row, data (CSC int16)
+        ctypes.c_int32, ctypes.c_int32,  # n, nnz
+        _float_p, _float_p, _float_p, _int_p,  # spikes, V, g, refr
+        ctypes.c_float, ctypes.c_float, ctypes.c_float,  # V_rest, V_th, V_reset
+        ctypes.c_float, ctypes.c_float, ctypes.c_float,  # neuromod, tau_m, dt
+        ctypes.c_float, ctypes.c_int32,  # syn_decay, refractory_steps
+        _float_p,                        # spikes_out
+    ]
+    dll.lif_alpha_ed_step_i16.restype = None
     return dll
 
 
@@ -65,6 +76,28 @@ class NativeLIFAlpha:
             spikes_out.ctypes.data_as(_float_p),
         )
 
+    def step16(self, colptr, row, data16, spikes, V, g, refr,
+               V_rest, V_th, V_reset, neuromod, tau_m, dt,
+               syn_decay, refractory_steps, spikes_out):
+        """Variante int16 : 2× moins de trafic mémoire sur le scatter actif
+        (poids MaleCNS = entiers exacts). Sémantique identique à step()."""
+        n = np.int32(V.shape[0])
+        nnz = np.int32(data16.shape[0])
+        self.dll.lif_alpha_ed_step_i16(
+            colptr.ctypes.data_as(_int_p),
+            row.ctypes.data_as(_int_p),
+            data16.ctypes.data_as(_int16_p),
+            n, nnz,
+            spikes.ctypes.data_as(_float_p),
+            V.ctypes.data_as(_float_p),
+            g.ctypes.data_as(_float_p),
+            refr.ctypes.data_as(_int_p),
+            ctypes.c_float(V_rest), ctypes.c_float(V_th), ctypes.c_float(V_reset),
+            ctypes.c_float(neuromod), ctypes.c_float(tau_m), ctypes.c_float(dt),
+            ctypes.c_float(syn_decay), ctypes.c_int32(refractory_steps),
+            spikes_out.ctypes.data_as(_float_p),
+        )
+
 
 def csc_from_csr(csr, n):
     """Construit (colptr, row, data) CSC à partir d'une CSR scipy (n×n)."""
@@ -72,6 +105,14 @@ def csc_from_csr(csr, n):
     return (np.ascontiguousarray(M.indptr, dtype=np.int32),
             np.ascontiguousarray(M.indices, dtype=np.int32),
             np.ascontiguousarray(M.data, dtype=np.float32))
+
+
+def csc16_from_csr(csr, n):
+    """CSC avec poids en int16 (arrondis) : les poids MaleCNS sont des entiers
+    exacts (100% à ≤0.05 d'un entier), donc l'arrondi est sans perte ici et
+    divise par 2 le trafic mémoire du scatter actif."""
+    colptr, row, data = csc_from_csr(csr, n)
+    return (colptr, row, np.round(data).astype(np.int16))
 
 
 def verify_vs_torch(n_trials: int = 300, tol: float = 1e-4) -> tuple[int, int]:

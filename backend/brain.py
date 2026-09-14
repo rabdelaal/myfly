@@ -140,13 +140,21 @@ class FlyBrain:
         # Uniquement batch=1 (prod live.py), CPU. Gagne sur les gros
         # connectomes où le sparse.mm torch ~51-71 ms/step est memory-bound.
         self._native_alpha = None
+        self._native_alpha16 = None
         if (self.device == "cpu" and synapse_model == "alpha"):
             try:
-                from native_lif_alpha import NativeLIFAlpha, csc_from_csr
+                from native_lif_alpha import NativeLIFAlpha, csc_from_csr, csc16_from_csr
                 self._native_alpha = NativeLIFAlpha()
                 self._csc_colptr, self._csc_row, self._csc_data = \
                     csc_from_csr(W, self.n)
                 self._csc_nnz = int(self._csc_data.shape[0])
+                # Variante int16 : 2× moins de trafic mémoire, bit-exact car les
+                # poids MaleCNS sont des entiers exacts.
+                try:
+                    self._csc16_data = csc16_from_csr(W, self.n)[2]
+                    self._native_alpha16 = self._native_alpha
+                except Exception:
+                    self._csc16_data = None
             except Exception as e:
                 print(f"[brain] backend natif α indisponible ({e}), repli torch.")
                 self._native_alpha = None
@@ -252,13 +260,23 @@ class FlyBrain:
                 refr_np = self._refr.numpy()
                 delayed_np = delayed.numpy()
                 spikes_out = np.zeros(self.n, dtype=np.float32)
-                self._native_alpha.step(
-                    self._csc_colptr, self._csc_row, self._csc_data,
-                    delayed_np, V_np, g_np, refr_np,
-                    self.V_rest, self.V_th, self.V_reset, self.neuromod,
-                    self.tau_m, self.dt, self._syn_decay, self.refractory_steps,
-                    spikes_out,
-                )
+                if self._native_alpha16 is not None:
+                    # Variante int16 : 2× moins de trafic mémoire, bit-exact
+                    self._native_alpha16.step16(
+                        self._csc_colptr, self._csc_row, self._csc16_data,
+                        delayed_np, V_np, g_np, refr_np,
+                        self.V_rest, self.V_th, self.V_reset, self.neuromod,
+                        self.tau_m, self.dt, self._syn_decay, self.refractory_steps,
+                        spikes_out,
+                    )
+                else:
+                    self._native_alpha.step(
+                        self._csc_colptr, self._csc_row, self._csc_data,
+                        delayed_np, V_np, g_np, refr_np,
+                        self.V_rest, self.V_th, self.V_reset, self.neuromod,
+                        self.tau_m, self.dt, self._syn_decay, self.refractory_steps,
+                        spikes_out,
+                    )
                 self.spikes = torch.from_numpy(spikes_out).unsqueeze(1)
                 # Les états V/g/refr sont écrits en place par le kernel.
             else:

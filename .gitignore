@@ -21,6 +21,10 @@ tools/spear-demo/node_modules/
 finetune.log
 finetune_err.log
 readout_looped.pt
+finetune.pid
+watcher_out.log
+watcher_err.log
+bench_after_finetune.log
 
 # état triple-helix (persistant entre sessions, local)
 helix_state.json

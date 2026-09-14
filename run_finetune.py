@@ -1,4 +1,5 @@
 """Lanceur du fine-tune complet LoopedReadout sur MaleCNS (mode détaché)."""
+import os
 import sys
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from flyintel import train
 SF = "tools/stockfish/stockfish/stockfish-windows-x86-64-universal.exe"
 
 if __name__ == "__main__":
+    # Enregistre son propre PID pour le watcher (processus détaché).
+    Path("finetune.pid").write_text(str(os.getpid()))
     train.train_looped(
         episodes=200,
         max_moves=60,

@@ -100,6 +100,47 @@ void lif_alpha_ed_step(const int32_t *colptr, const int32_t *row, const float *d
     }
 }
 
+/**
+ * Variante int16 : les poids MaleCNS sont des entiers exacts (100% a <=0.05
+ * d'un entier, range [-2591, 1878]). Les stocker en int16 (2 octets) au lieu
+ * de float32 (4 octets) divise par 2 le trafic memoire sur le scatter actif,
+ * sans perte (int16->float32 exact pour ce range). Meme semantique que
+ * lif_alpha_ed_step.
+ */
+void lif_alpha_ed_step_i16(const int32_t *colptr, const int32_t *row, const int16_t *data,
+                           const int32_t n, const int32_t nnz,
+                           const float *spikes, float *V, float *g, int32_t *refr,
+                           const float V_rest, const float V_th, const float V_reset,
+                           const float neuromod, const float tau_m, const float dt,
+                           const float syn_decay, const int32_t refractory_steps,
+                           float *spikes_out)
+{
+    for (int32_t i = 0; i < n; ++i) g[i] *= syn_decay;
+
+    for (int32_t j = 0; j < n; ++j) {
+        if (spikes[j] == 0.0f) continue;
+        const int32_t lo = colptr[j], hi = colptr[j + 1];
+        for (int32_t k = lo; k < hi; ++k) {
+            g[row[k]] += (float)data[k];           /* int16->float32, exact */
+        }
+    }
+
+    const float integ = dt / tau_m;
+    for (int32_t i = 0; i < n; ++i) {
+        V[i] += (-(V[i] - V_rest) + neuromod * g[i]) * integ;
+        const int32_t r = refr[i];
+        const int spiked = (int32_t)(V[i] >= V_th) & (r <= 0);
+        if (spiked) {
+            V[i] = V_reset;
+            refr[i] = refractory_steps;
+            spikes_out[i] = 1.0f;
+        } else {
+            refr[i] = r > 0 ? r - 1 : 0;
+            spikes_out[i] = 0.0f;
+        }
+    }
+}
+
 /* Référence naïve — même accumulation (colonne active ordonnée j croissant),
  * bit-exact exigé avec lif_alpha_ed_step. */
 void lif_alpha_ed_reference(const int32_t *colptr, const int32_t *row, const float *data,
@@ -140,9 +181,12 @@ static float rng_uniform(void) { return (float)((rng_next() >> 40) & 0xFFFFFF) /
 
 int main(void) {
     printf("===============================================================================\n");
-    printf("  LIF ALPHA EVENT-DRIVEN : HARNESS DE VERIFICATION (1 000 000 reseaux)\n");
+    printf("  LIF ALPHA EVENT-DRIVEN : HARNESS DE VERIFICATION\n");
     printf("===============================================================================\n");
-    const int32_t TRIALS = 1000000;
+#ifndef TRIALS
+#define TRIALS 1000000
+#endif
+    const int32_t N_TRIALS = TRIALS;
     int32_t violations = 0, max_nnz = 0;
 
     float spikes[256], V[256], V_ref[256], g[256], g_ref[256], out[256], out_ref[256];
@@ -150,7 +194,7 @@ int main(void) {
     int32_t colptr[257], row[256 * 16];
     float data[256 * 16];
 
-    for (int32_t t = 0; t < TRIALS; ++t) {
+    for (int32_t t = 0; t < N_TRIALS; ++t) {
         const int32_t n = 1 + (int32_t)rng_below(256);
         int32_t nnz = 0;
         colptr[0] = 0;
@@ -200,10 +244,38 @@ int main(void) {
             if (violations < 5) fprintf(stderr, "DIVERGENCE trial=%d n=%d nnz=%d\n", t, n, nnz);
             violations++;
         }
+
+        /* --- Variante int16 : les poids sont tronques a entiers (MaleCNS
+         * est deja entier). La reference doit utiliser les memes poids
+         * entiers retronques en float, sinon 0.07 != (int)0. --- */
+        static int16_t data16[256 * 16];
+        static float data_int[256 * 16];
+        for (int32_t k = 0; k < nnz; ++k) {
+            data16[k] = (int16_t)data[k];
+            data_int[k] = (float)data16[k];   /* poids entier retronque */
+        }
+        float V16[256]; memcpy(V16, V, sizeof(float) * (size_t)n);
+        float g16[256]; memcpy(g16, g, sizeof(float) * (size_t)n);
+        int32_t r16[256]; memcpy(r16, refr, sizeof(int32_t) * (size_t)n);
+        float out16[256], out16r[256];
+        float V16r[256]; memcpy(V16r, V, sizeof(float) * (size_t)n);
+        float g16r[256]; memcpy(g16r, g, sizeof(float) * (size_t)n);
+        int32_t r16r[256]; memcpy(r16r, refr, sizeof(int32_t) * (size_t)n);
+        lif_alpha_ed_step_i16(colptr, row, data16, n, nnz, spikes, V16, g16, r16,
+                              V_rest, V_th, V_reset, neuromod, tau_m, dt, syn_decay, refrac, out16);
+        lif_alpha_ed_reference(colptr, row, data_int, n, nnz, spikes, V16r, g16r, r16r,
+                               V_rest, V_th, V_reset, neuromod, tau_m, dt, syn_decay, refrac, out16r);
+        if (memcmp(V16, V16r, sizeof(float) * (size_t)n) != 0 ||
+            memcmp(g16, g16r, sizeof(float) * (size_t)n) != 0 ||
+            memcmp(r16, r16r, sizeof(int32_t) * (size_t)n) != 0 ||
+            memcmp(out16, out16r, sizeof(float) * (size_t)n) != 0) {
+            if (violations < 5) fprintf(stderr, "DIVERGENCE-i16 trial=%d n=%d nnz=%d\n", t, n, nnz);
+            violations++;
+        }
     }
-    printf("Essais (N = %d), nnz max = %d :\n", TRIALS, max_nnz);
+    printf("Essais (N = %d), nnz max = %d :\n", N_TRIALS, max_nnz);
     printf("  - Bit-exact kernel vs reference : %d / %d (%.4f%%)\n",
-           TRIALS - violations, TRIALS, 100.0 * (TRIALS - violations) / TRIALS);
+           N_TRIALS - violations, N_TRIALS, 100.0 * (N_TRIALS - violations) / N_TRIALS);
     printf("  - Violations : %d\n", violations);
     return violations != 0;
 }
