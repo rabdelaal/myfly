@@ -179,7 +179,7 @@ class NewGameRequest(BaseModel):
 
 
 class PetActionRequest(BaseModel):
-    action: str  # feed | pet | clean | sleep | wake | courtship | threat
+    action: str  # feed | pet | clean | sleep | wake | courtship | threat | study
 
 
 class LabLesionRequest(BaseModel):
@@ -258,6 +258,15 @@ def learn_endpoint(req: LearnRequest):
         except Exception as e:
             raise HTTPException(502, f"apprentissage échoué: {e}")
     return {"query": req.query, "learned": len(saved), "files": saved}
+
+
+@app.get("/api/knowledge")
+def knowledge_list():
+    """Ce que le modèle a appris : [{file, title, source, size, mtime,
+    excerpt}], plus récent d'abord. Boucle la boucle de /api/learn."""
+    with _learn_lock:
+        items = websearch.list_learned("knowledge")
+    return {"count": len(items), "items": items}
 
 
 # --- ⚗️ Labo des lésions virtuelles ---

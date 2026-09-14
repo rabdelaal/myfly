@@ -43,6 +43,7 @@ STIMULUS_RECIPES = {
     # pour la parade, mécanosensoriel répété pour la menace.
     "courtship": {"smell": 1.0, "vibration": 0.6, "touch": 0.3},
     "threat":    {"touch": 1.0, "vibration": 1.0, "frustration": 0.5},
+    "study":     {"pattern": 1.0, "light": 0.5, "touch": 0.2},
 }
 STIMULUS_GAIN = 5.0
 
@@ -53,6 +54,7 @@ ACTION_EFFECTS = {
     "clean": {"hygiene": +100.0, "happiness": -4.0},
     "courtship": {"happiness": +10.0, "energy": -8.0},
     "threat":    {"happiness": -6.0, "energy": -5.0},
+    "study":     {"happiness": +6.0, "energy": -3.0},
 }
 
 # Messages de réaction, par action et par intensité de la réponse neuronale
@@ -84,6 +86,10 @@ REACTION_MESSAGES = {
     "threat": {
         "strong": "Il fonce pattes en avant, ailes écartées : intimidation maximale 😠",
         "weak":   "Il fait un pas menaçant puis hésite.",
+    },
+    "study": {
+        "strong": "Ses yeux composés scannent frénétiquement : elle dévore ce savoir 📚✨",
+        "weak":   "Elle parcourt distraitement quelques lignes…",
     },
 }
 
@@ -240,7 +246,7 @@ class FlyPet:
     # --- Actions de soin ---
     def do_action(self, action: str) -> dict:
         self.apply_decay()
-        if action not in ("feed", "pet", "clean", "wake", "sleep", "courtship", "threat"):
+        if action not in ("feed", "pet", "clean", "wake", "sleep", "courtship", "threat", "study"):
             raise ValueError(f"Action inconnue : {action}")
 
         if action == "sleep":
@@ -262,6 +268,9 @@ class FlyPet:
         if self.state["sleeping"]:
             return {"message": "Chut ! Elle dort. Réveille-la d'abord 💤", "frames": [], "applied": False}
 
+        if action == "study":
+            return self.study()
+
         # Effets sur les stats (avec un refus si elle n'a plus faim)
         if action == "feed" and self.state["stats"]["satiety"] > 90.0:
             self.state["stats"]["happiness"] = min(MAX_STAT, self.state["stats"]["happiness"] - 5.0)
@@ -276,6 +285,42 @@ class FlyPet:
         self.state["xp"] += 5
         self.save()
         return {**self.react(action), "applied": True}
+
+    # --- Mémoire web : le pet cite ce que le modèle a appris ---
+    @staticmethod
+    def _websearch():
+        import sys
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from flyintel import websearch
+        return websearch
+
+    def recall_knowledge(self) -> dict | None:
+        """Le souvenir le plus récent (titre + extrait), ou None si rien appris."""
+        try:
+            return self._websearch().recall_latest("knowledge", max_chars=300)
+        except Exception:
+            return None
+
+    def study(self) -> dict:
+        """Étudier : réaction neuronale + citation de la dernière chose apprise."""
+        learned = self.recall_knowledge()
+        if learned is None:
+            return {"message": "Elle feuillette… mais n'a encore rien appris 📭 (POST /api/learn d'abord)",
+                    "frames": [], "applied": False}
+        for key, delta in ACTION_EFFECTS["study"].items():
+            self.state["stats"][key] = float(
+                np.clip(self.state["stats"][key] + delta, 0.0, MAX_STAT)
+            )
+        self.state["xp"] += 5
+        self.save()
+        out = self.react("study")
+        out["message"] += f"\n📚 Elle cite « {learned['title']} » : {learned['text'][:200]}…"
+        out["learned"] = {"title": learned["title"], "source": learned["source"]}
+        out["applied"] = True
+        return out
 
     # --- Mini-jeu échecs ---
     def on_chess_move(self, motor: float | None = None, fast: bool = False) -> dict:
@@ -308,6 +353,7 @@ class FlyPet:
     def status(self) -> dict:
         self.apply_decay()
         level = self.state["xp"] // 100 + 1
+        learned = self.recall_knowledge()
         return {
             "stats": self.state["stats"],
             "stat_labels": STAT_LABELS_FR,
@@ -321,4 +367,6 @@ class FlyPet:
             "xp": self.state["xp"],
             "xp_next": int(level * 100),
             "age_hours": round((time.time() - self.state["birth"]) / 3600.0, 1),
+            "last_learned": ({"title": learned["title"], "source": learned["source"]}
+                             if learned else None),
         }

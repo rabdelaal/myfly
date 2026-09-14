@@ -161,6 +161,12 @@ def test_websearch():
     with tempfile.TemporaryDirectory() as td:
         saved = websearch.learn("connectome", dir=td, num=1, sleep_s=0)
         assert saved and Path(saved[0]).exists()
+        items = websearch.list_learned(td)
+        assert len(items) == 1 and items[0]["title"] and items[0]["excerpt"], items
+        rec = websearch.recall_latest(td)
+        assert rec and rec["title"] == items[0]["title"] and rec["text"]
+        assert websearch.list_learned(str(Path(td) / "absent")) == []
+        assert websearch.recall_latest(str(Path(td) / "absent")) is None
     print("ok test_websearch")
 
 

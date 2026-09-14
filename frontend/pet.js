@@ -13,6 +13,7 @@ const PetUI = {
     document.getElementById('btn-sleep').onclick = () => this.action('sleep-toggle');
     document.getElementById('btn-courtship').onclick = () => this.action('courtship');
     document.getElementById('btn-threat').onclick = () => this.action('threat');
+    document.getElementById('btn-study').onclick = () => this.action('study');
     await this.refresh();
     // Passive decay: refresh every 30 s
     setInterval(() => this.refresh(), 30000);
@@ -92,7 +93,8 @@ const PetUI = {
       : `${(s.age_hours / 24).toFixed(1)} d`;
     document.getElementById('pet-meta').textContent =
       `Level ${s.level} · ${s.xp % 100}/100 XP · age ${age}` +
-      (s.sleeping ? ' · recovering' : '');
+      (s.sleeping ? ' · recovering' : '') +
+      (s.last_learned ? ` · 📚 ${s.last_learned.title.slice(0, 40)}` : '');
   },
 };
 

@@ -148,6 +148,57 @@ def learn(query: str, dir: str = "knowledge", num: int = 3,
     return saved
 
 
+def _parse_learned(path: Path) -> dict:
+    """Lit un .md écrit par learn() -> {file, title, source, text}."""
+    raw = path.read_text(encoding="utf-8", errors="ignore")
+    lines = raw.splitlines()
+    title = lines[0][2:].strip() if lines and lines[0].startswith("# ") else path.stem
+    source = ""
+    body_start = 0
+    for i, ln in enumerate(lines):
+        if ln.startswith("- source:"):
+            source = ln[len("- source:"):].strip()
+        elif ln.strip() == "" and body_start == 0 and i > 2:
+            body_start = i + 1
+    text = "\n".join(lines[body_start:]).strip() if body_start else raw.strip()
+    return {"file": str(path), "title": title, "source": source, "text": text}
+
+
+def list_learned(dir: str = "knowledge", excerpt_chars: int = 300) -> list[dict]:
+    """Liste ce que le modèle a appris (plus récent d'abord) :
+    [{file, title, source, size, mtime, excerpt}]. Dossier absent → []."""
+    d = Path(dir)
+    if not d.is_dir():
+        return []
+    out = []
+    for p in sorted(d.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            parsed = _parse_learned(p)
+            st = p.stat()
+            out.append({
+                "file": parsed["file"],
+                "title": parsed["title"],
+                "source": parsed["source"],
+                "size": st.st_size,
+                "mtime": st.st_mtime,
+                "excerpt": parsed["text"][:excerpt_chars],
+            })
+        except OSError:
+            continue
+    return out
+
+
+def recall_latest(dir: str = "knowledge", max_chars: int = 600) -> dict | None:
+    """Le souvenir le plus récent : {title, source, file, text} ou None.
+    C'est ce que le pet cite quand on lui demande d'étudier."""
+    items = list_learned(dir, excerpt_chars=0)
+    if not items:
+        return None
+    parsed = _parse_learned(Path(items[0]["file"]))
+    parsed["text"] = parsed["text"][:max_chars]
+    return parsed
+
+
 # --------------------------------------------------------------------------- #
 # Self-check (ponytail : un check exécutable minimal)
 # --------------------------------------------------------------------------- #
