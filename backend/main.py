@@ -22,6 +22,14 @@ from chess_engine import FlyChessEngine
 from tamagotchi import FlyPet
 from live import LiveSim
 from lab import LesionLab
+# flyintel est un package à la racine du repo (hors backend/) : on l'ajoute au
+# path pour pouvoir importer websearch (outil d'apprentissage web du modèle).
+import sys as _sys
+from pathlib import Path as _Path
+_ROOT = _Path(__file__).resolve().parent.parent
+if str(_ROOT) not in _sys.path:
+    _sys.path.insert(0, str(_ROOT))
+from flyintel import websearch
 
 # --- État global (un seul cerveau, chargé au démarrage) ---
 STATE = {
@@ -178,6 +186,12 @@ class LabLesionRequest(BaseModel):
     key: str
 
 
+class LearnRequest(BaseModel):
+    query: str
+    num: int = 3
+    dir: str = "knowledge"
+
+
 # --- Endpoints ---
 @app.get("/api/info")
 def info():
@@ -222,6 +236,28 @@ def pet_action(req: PetActionRequest):
             and reaction.get("message")):
         STATE["live"].event(req.action, reaction["message"])
     return {**reaction, "pet": STATE["pet"].status()}
+
+
+# --- 📚 Apprentissage web (le modèle apprend de nouvelles données à chaud) ---
+
+_learn_lock = threading.Lock()
+
+
+@app.post("/api/learn")
+def learn_endpoint(req: LearnRequest):
+    """Recherche web (Exa si EXA_API_KEY, sinon DuckDuckGo), récupère et
+    persiste les résultats en markdown — données ré-ingérables par le modèle."""
+    if not req.query.strip():
+        raise HTTPException(400, "query vide")
+    if not 1 <= req.num <= 10:
+        raise HTTPException(400, "num entre 1 et 10")
+    with _learn_lock:  # évite d'écraser knowledge/ par des appels concurrents
+        try:
+            saved = websearch.learn(
+                req.query, dir=req.dir, num=req.num, sleep_s=1.0)
+        except Exception as e:
+            raise HTTPException(502, f"apprentissage échoué: {e}")
+    return {"query": req.query, "learned": len(saved), "files": saved}
 
 
 # --- ⚗️ Labo des lésions virtuelles ---

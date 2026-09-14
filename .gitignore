@@ -25,6 +25,8 @@ finetune.pid
 watcher_out.log
 watcher_err.log
 bench_after_finetune.log
+backend_uvicorn.log
+backend_uvicorn_err.log
 
 # état triple-helix (persistant entre sessions, local)
 helix_state.json
