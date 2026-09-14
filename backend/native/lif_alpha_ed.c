@@ -36,6 +36,13 @@
  *                     sensoriels arrivent déjà dans `delayed` via la boucle
  *                     sensory en amont.
  *
+ * ponytail: les poids MaleCNS sont des ENTIERS EXACTS (100% a <=0.05 d'un
+ * entier, range [-2591, 1878]) — on peut les stocker en int16 (2 octets) au
+ * lieu de float32 (4 octets) : -2x de trafic memoire sur le scatter actif,
+ * sans perte (conversion int16->float32 exacte pour ce range). PAS ternaire
+ * (seuls 40% dans {-1,0,+1}) : le bitplane HTC-Core 2 bits perdrait 60% des
+ * poids. A faire apres le benchmark de reference event-driven.
+ *
  * Compilation :
  *   gcc -O3 -march=native -shared -o lif_alpha_ed.dll lif_alpha_ed.c
  *   gcc -O3 -march=native -o lif_alpha_ed_verify lif_alpha_ed.c -DLIF_VERIFY_MAIN
