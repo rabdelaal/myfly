@@ -120,8 +120,32 @@ def test_benchmark_smoke():
         r = bench.run_all(brain, conn, tag="unittest")
         assert r["tag"] == "unittest"
         assert "dynamics" in r["domains"]
+        assert "metaphor" in r["domains"]
         assert bench.LEADERBOARD_PATH.exists()
         print("ok test_benchmark_smoke")
+
+
+def test_metaphor_stub():
+    from encoding import AnythingEncoder
+    enc = AnythingEncoder(n_sensory=64)
+    c = enc.encode_options(["sacrifice the queen", "push a pawn"])
+    assert c.shape == (64, 2)
+    # norme constante par option (même régime que BoardEncoder)
+    assert abs(float(c[:, 0].norm()) - 450.0) < 1.0
+    assert abs(float(c[:, 1].norm()) - 450.0) < 1.0
+    # options distinctes -> patterns distincts
+    assert float((c[:, 0] - c[:, 1]).norm()) > 1.0
+    # déterminisme
+    c2 = enc.encode_options(["sacrifice the queen", "push a pawn"])
+    assert float((c - c2).abs().max()) == 0.0
+    # domaine stub : séparabilité sans teacher
+    from data_loader import _synthetic_connectome
+    from brain import FlyBrain
+    conn = _synthetic_connectome(n_neurons=300, sparsity=0.02)
+    brain = FlyBrain(conn["W"], conn["is_sensory"], conn["is_motor"], conn["is_descending"])
+    r = bench.metaphor(brain, conn, steps=30)
+    assert r["score"] is None and "separation" in r["detail"], r
+    print("ok test_metaphor_stub")
 
 
 def test_websearch():
@@ -143,6 +167,6 @@ def test_websearch():
 if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
-               test_benchmark_smoke, test_websearch]:
+               test_benchmark_smoke, test_metaphor_stub, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")

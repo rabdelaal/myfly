@@ -33,7 +33,7 @@ from readout_looped import (                          # noqa: E402
     save_looped,
     load_looped,
 )
-from encoding import BoardEncoder, ModalBoardEncoder   # noqa: E402
+from encoding import BoardEncoder, ModalBoardEncoder, AnythingEncoder   # noqa: E402
 from data_loader import (                             # noqa: E402
     load_connectome,
     dn_maxflow_mask,
@@ -63,6 +63,7 @@ __all__ = [
     "load_looped",
     "BoardEncoder",
     "ModalBoardEncoder",
+    "AnythingEncoder",
     "load_connectome",
     "dn_maxflow_mask",
     "DATA_DIR",

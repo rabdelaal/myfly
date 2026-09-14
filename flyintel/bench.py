@@ -9,6 +9,8 @@ Domains (each a pure function of (brain, conn, readout?)):
   - discrimination: can the motor readout tell different stimuli apart?
   - dynamics      : stability, no avalanches, firing-rate sanity
   - speed         : simulation wall-clock (ms per step) with backend dispatch
+  - metaphor      : metabrain stub — motor separability of non-chess options
+                    encoded via AnythingEncoder (transfer scored in Phase 2)
 
 Every domain returns (metric_name -> value). Results are merged into
 leaderboard.json keyed by domain; a higher `score` column ranks better.
@@ -138,6 +140,45 @@ def dynamics(brain, conn, steps=300) -> dict:
 
 
 # --------------------------------------------------------------------------
+# Domain: metaphor (metabrain) — le readout échecs peut-il classer des
+# options NON-échecs encodées en métaphore ?
+# Phase 0 (stub) : sans teacher, mesure la séparabilité motrice des options
+# (prouve que l'encodeur pilote des états distincts). Avec readout : reporte
+# en plus la marge du readout (quelle option il préfère, de combien).
+# Phase 2 : brancher le jeu A/B ancré (vérité stockfish) pour scorer le
+# transfert ; le leaderboard tranchera alors si le metabrain vaut quelque
+# chose. Voir AnythingEncoder dans backend/encoding.py.
+# --------------------------------------------------------------------------
+METAPHOR_PROBE = (
+    "sacrifice the queen for forced checkmate in two moves",
+    "push a kingside pawn one square with no threat",
+)
+
+
+def metaphor(brain, conn, readout=None, encoder=None, steps=100) -> dict:
+    from encoding import AnythingEncoder
+    enc = encoder if isinstance(encoder, AnythingEncoder) else AnythingEncoder(
+        n_sensory=int(conn["is_sensory"].sum()))
+    with torch.no_grad():
+        currents = enc.encode_options(list(METAPHOR_PROBE)).to(brain.device)
+        pats = []
+        for o in range(currents.shape[1]):
+            r = brain.run(currents[:, o:o + 1], n_steps=steps, record_every=10)
+            pats.append(r["motor_mean"].cpu().numpy().ravel())
+    sep = float(np.linalg.norm(pats[0] - pats[1]))
+    out = {"score": None, "detail": f"stub: motor separation {sep:.3f}, teacher readout required for transfer score"}
+    if readout is not None:
+        try:
+            with torch.no_grad():
+                s = [float(readout(p.reshape(1, -1)).ravel()[0]) for p in pats]
+            margin = s[0] - s[1]
+            out["detail"] += f" | readout margin A-B {margin:+.3f}"
+        except Exception as e:
+            out["detail"] += f" | readout failed: {e}"
+    return out
+
+
+# --------------------------------------------------------------------------
 # Domain: speed — wall-clock per step, both backends if available
 # --------------------------------------------------------------------------
 def speed(brain, conn, steps=200) -> dict:
@@ -158,6 +199,7 @@ DOMAINS = {
     "discrimination": discrimination,
     "dynamics": dynamics,
     "speed": speed,
+    "metaphor": metaphor,
 }
 
 
@@ -170,6 +212,8 @@ def run_all(brain, conn, readout=None, encoder=None, val_boards=None,
         try:
             if name == "chess_reflex":
                 res = fn(brain, conn, readout, encoder, val_boards, targets)
+            elif name == "metaphor":
+                res = fn(brain, conn, readout, encoder)
             elif name == "feeding":
                 res = fn(brain, conn)
             else:

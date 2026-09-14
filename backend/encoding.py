@@ -156,3 +156,59 @@ class ModalBoardEncoder(BoardEncoder):
     def encode_batch(self, boards: list[chess.Board]) -> torch.Tensor:
         feats = np.stack([self._features(b) for b in boards], axis=0)
         return torch.tensor(self._encode_feats(feats).T, dtype=torch.float32)
+
+
+# --- Encodage métaphorique (metabrain Phase 2) : n'importe quel problème à
+# choix (options en texte + nombres) → courants sensoriels dans le MÊME régime
+# que BoardEncoder (gain 20, norme 450), pour être lisible par le MÊME readout
+# échecs. Texte → sac-de-trigrammes haché (déterministe, sans dépendance).
+class AnythingEncoder:
+    """Encode des options hétérogènes en patterns sensoriels comparables.
+
+    Usage :
+        enc = AnythingEncoder(n_sensory=brain.n_sensory)
+        currents = enc.encode_options(["sacrifice the queen", "push a pawn"])
+        # currents : (n_sensory, 2) — une colonne par option, norme 450.
+        # Le readout échecs score chaque colonne ; argmax = choix de l'essaim.
+    """
+
+    def __init__(self, n_sensory: int, seed: int = 7,
+                 n_text_features: int = 512, n_num_features: int = 16):
+        self.n_sensory = n_sensory
+        self.n_text = n_text_features
+        self.n_num = n_num_features
+        self.n_features = n_text_features + n_num_features
+        rng = np.random.default_rng(seed)
+        self.proj = rng.normal(
+            scale=1.0 / np.sqrt(self.n_features),
+            size=(self.n_features, n_sensory)).astype(np.float32)
+
+    def _text_features(self, text: str) -> np.ndarray:
+        """Sac-de-trigrammes de caractères haché → (n_text,), déterministe."""
+        v = np.zeros(self.n_text, dtype=np.float32)
+        t = f" {text.lower()} "
+        for i in range(max(len(t) - 2, 1)):
+            v[hash(t[i:i + 3]) % self.n_text] += 1.0
+        n = float(np.linalg.norm(v))
+        return v / n if n > 0 else v
+
+    def _features(self, text: str, numbers=None) -> np.ndarray:
+        feats = np.zeros(self.n_features, dtype=np.float32)
+        feats[:self.n_text] = self._text_features(text)
+        if numbers is not None:
+            arr = np.asarray(numbers, dtype=np.float32).ravel()[:self.n_num]
+            feats[self.n_text:self.n_text + len(arr)] = np.clip(arr, -3.0, 3.0)
+        return feats
+
+    def encode_options(self, texts: list[str],
+                       numbers_list=None) -> torch.Tensor:
+        """(n_sensory, n_options) : une colonne de courants par option,
+        chacune normalisée à norme constante (même régime que BoardEncoder)."""
+        feats = np.stack([
+            self._features(t, None if numbers_list is None else numbers_list[i])
+            for i, t in enumerate(texts)], axis=0)  # (O, n_features)
+        currents = feats @ self.proj  # (O, n_sensory)
+        c = torch.tensor(currents.T, dtype=torch.float32) * STIM_GAIN
+        norms = c.norm(dim=0, keepdim=True)
+        norms = torch.where(norms > 0, norms, torch.ones_like(norms))
+        return c * (STIM_TARGET_NORM / norms)
