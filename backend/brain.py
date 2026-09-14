@@ -135,6 +135,22 @@ class FlyBrain:
                 print(f"[brain] backend natif indisponible ({e}), repli torch.")
                 self._native = None
 
+        # Backend natif α event-driven (lif_alpha_ed.dll) : layout CSC, ne
+        # disperse que les neurones actifs (~7 %) au lieu du sparse.mm dense.
+        # Uniquement batch=1 (prod live.py), CPU. Gagne sur les gros
+        # connectomes où le sparse.mm torch ~51-71 ms/step est memory-bound.
+        self._native_alpha = None
+        if (self.device == "cpu" and synapse_model == "alpha"):
+            try:
+                from native_lif_alpha import NativeLIFAlpha, csc_from_csr
+                self._native_alpha = NativeLIFAlpha()
+                self._csc_colptr, self._csc_row, self._csc_data = \
+                    csc_from_csr(W, self.n)
+                self._csc_nnz = int(self._csc_data.shape[0])
+            except Exception as e:
+                print(f"[brain] backend natif α indisponible ({e}), repli torch.")
+                self._native_alpha = None
+
         self.reset()
 
     def set_neuromod(self, gain: float):
@@ -228,17 +244,35 @@ class FlyBrain:
             # sugar/lésion touchent le nouveau tenseur, cf. lignes ci-dessous).
             delayed = self._delay.pop(0)
             self._delay.append(self.spikes)
-            # 2) α-synapse : incrément w au spike présynaptique, décroissance τ_syn
-            inc = torch.sparse.mm(self.W, delayed)
-            self.g.mul_(self._syn_decay).add_(inc)
-            # 3) intégration LIF + réfractaire absolu (in-place, zéro alloc
-            # intermédiaire : I_syn est plié dans la mise à jour de V)
-            self.V += (-(self.V - self.V_rest) + self.neuromod * self.g) * (self.dt / self.tau_m)
-            sp = (self.V >= self.V_th) & (self._refr <= 0)
-            self.V.masked_fill_(sp, self.V_reset)
-            self._refr.sub_(1).clamp_(min=0)
-            self._refr.masked_fill_(sp, self.refractory_steps)
-            self.spikes = sp.float()
+
+            # --- Backend natif α event-driven (batch=1, CPU) ---
+            if (self._native_alpha is not None and B == 1):
+                V_np = self.V.numpy()
+                g_np = self.g.numpy()
+                refr_np = self._refr.numpy()
+                delayed_np = delayed.numpy()
+                spikes_out = np.zeros(self.n, dtype=np.float32)
+                self._native_alpha.step(
+                    self._csc_colptr, self._csc_row, self._csc_data,
+                    delayed_np, V_np, g_np, refr_np,
+                    self.V_rest, self.V_th, self.V_reset, self.neuromod,
+                    self.tau_m, self.dt, self._syn_decay, self.refractory_steps,
+                    spikes_out,
+                )
+                self.spikes = torch.from_numpy(spikes_out).unsqueeze(1)
+                # Les états V/g/refr sont écrits en place par le kernel.
+            else:
+                # 2) α-synapse : incrément w au spike présynaptique, décroissance τ_syn
+                inc = torch.sparse.mm(self.W, delayed)
+                self.g.mul_(self._syn_decay).add_(inc)
+                # 3) intégration LIF + réfractaire absolu (in-place, zéro alloc
+                # intermédiaire : I_syn est plié dans la mise à jour de V)
+                self.V += (-(self.V - self.V_rest) + self.neuromod * self.g) * (self.dt / self.tau_m)
+                sp = (self.V >= self.V_th) & (self._refr <= 0)
+                self.V.masked_fill_(sp, self.V_reset)
+                self._refr.sub_(1).clamp_(min=0)
+                self._refr.masked_fill_(sp, self.refractory_steps)
+                self.spikes = sp.float()
             # Stimuli externes convertis en Poisson (codage en fréquence).
             # I_full est nul hors sensoriels : bruit restreint aux ~16k
             # sensoriels (11× moins de tirages que le plein format n×B).

@@ -17,6 +17,11 @@ tools/spear-demo/node_modules/
 # captures de debug
 *.png
 
+# logs d'entraînement / benchmark lancés en arrière-plan
+finetune.log
+finetune_err.log
+readout_looped.pt
+
 # Binaires lourds / redondants (récupérables : apt install stockfish,
 # ou https://stockfishchess.org/download/ pour Windows)
 tools/stockfish/**/*.exe
