@@ -225,6 +225,23 @@ def test_ie_worlds():
     print("ok test_ie_worlds")
 
 
+def test_memory_loop():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    from flyhash import FlyHash, KnowledgeIndex
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as td:
+        assert KnowledgeIndex(td).search("anything")["count"] == 0
+        p = os.path.join(td, "t-0.md")
+        open(p, "w", encoding="utf-8").write(
+            "# Queen Endgames\n\n- source: http://x.test\n- engine: test\n\n"
+            "queen checkmate sacrifice attack king endgame technique.")
+        ki = KnowledgeIndex(td)
+        out = ki.search("queen checkmate", top=1)
+        assert out["count"] == 1 and "Queen" in out["items"][0]["title"], out
+    print("ok test_memory_loop")
+
+
 def test_htc():
     import sys as _sys
     _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
@@ -273,6 +290,6 @@ if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
                test_benchmark_smoke, test_metaphor_stub, test_sigil,
-               test_usecases, test_ie_worlds, test_htc, test_websearch]:
+               test_usecases, test_ie_worlds, test_memory_loop, test_htc, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")

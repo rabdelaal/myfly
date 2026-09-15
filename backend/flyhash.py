@@ -14,6 +14,7 @@ Usage :
 """
 import numpy as np
 import torch
+from pathlib import Path
 
 from encoding import AnythingEncoder
 
@@ -48,6 +49,42 @@ class FlyHash:
         overlap = (self.codes.astype(np.int32) * h[None, :]).sum(axis=1)
         order = np.argsort(-overlap, kind="stable")[:top]
         return [(int(i), int(overlap[i])) for i in order]
+
+
+class KnowledgeIndex:
+    """Mémoire sémantique : indexe les .md appris (websearch.learn) et
+    retrouve les lectures pertinentes. Reconstruit à chaque requête
+    (le dossier est minuscule) : toujours frais, zéro cache à invalider."""
+
+    def __init__(self, dir: str = "knowledge", **kw):
+        import sys
+        root = Path(__file__).resolve().parent.parent
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from flyintel import websearch
+        self.dir = dir
+        self.kw = kw
+        items = websearch.list_learned(dir, excerpt_chars=0)
+        self.files = [it["file"] for it in items]
+        self.metas = items
+        texts = []
+        for f in self.files:
+            try:
+                texts.append(websearch._parse_learned(
+                    Path(f))["text"][:4000])
+            except OSError:
+                texts.append("")
+        self.fh = FlyHash(**kw).index(texts) if texts else None
+
+    def search(self, q: str, top: int = 3):
+        if self.fh is None:
+            return {"count": 0, "items": []}
+        out = []
+        for i, o in self.fh.query(q, top=top):
+            m = dict(self.metas[i])
+            m["overlap"] = o
+            out.append(m)
+        return {"count": len(self.files), "items": out}
 
 
 if __name__ == "__main__":

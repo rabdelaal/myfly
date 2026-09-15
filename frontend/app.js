@@ -301,7 +301,7 @@ function playFrames(frames) {
 }
 
 function switchTab(which) {
-  const tabs = ['pet', 'chess', 'lab'];
+  const tabs = ['pet', 'chess', 'lab', 'sigils'];
   for (const t of tabs) {
     const btn = document.getElementById('tab-' + t);
     if (btn) btn.classList.toggle('active', t === which);
@@ -309,6 +309,7 @@ function switchTab(which) {
   document.getElementById('pet-view').classList.toggle('hidden', which !== 'pet');
   document.getElementById('chess-view').classList.toggle('hidden', which !== 'chess');
   document.getElementById('lab-view').classList.toggle('hidden', which !== 'lab');
+  document.getElementById('sigils-view').classList.toggle('hidden', which !== 'sigils');
   // ⚗️ Labo : si le premier chargement a échoué (backend occupé au démarrage),
   // retenter à chaque ouverture de l'onglet.
   if (which === 'lab' && window.LabUI) LabUI.refresh().catch(() => {});
@@ -442,9 +443,11 @@ async function init() {
   document.getElementById('tab-pet').onclick = () => switchTab('pet');
   document.getElementById('tab-chess').onclick = () => switchTab('chess');
   document.getElementById('tab-lab').onclick = () => switchTab('lab');
+  document.getElementById('tab-sigils').onclick = () => switchTab('sigils');
   await PetUI.init();
-  // Pas d'await : un /api/lab lent au démarrage ne doit pas retarder le WS
+  // Pas d'await : un /api lent au démarrage ne doit pas retarder le WS
   LabUI.init().catch(e => console.warn('Labo indisponible', e));
+  Sigils.init().catch(e => console.warn('Sigils indisponibles', e));
   connectWS();
   if (new URLSearchParams(location.search).has('theater')) Theater.open();
 }

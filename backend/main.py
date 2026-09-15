@@ -192,6 +192,20 @@ class LearnRequest(BaseModel):
     dir: str = "knowledge"
 
 
+class ReservoirRequest(BaseModel):
+    pattern: str = "flower"
+    series: list[float] = []
+    horizon: int = 1
+
+
+class IEGenerateRequest(BaseModel):
+    world: str = "ledger"  # ledger | roster
+    n_events: int = 40
+    invalid_rate: float = 0.12
+    seed: int = 0
+    op: str = ""  # défaut selon le monde
+
+
 # --- Endpoints ---
 @app.get("/api/info")
 def info():
@@ -267,6 +281,84 @@ def knowledge_list():
     with _learn_lock:
         items = websearch.list_learned("knowledge")
     return {"count": len(items), "items": items}
+
+
+@app.get("/api/sigils")
+def sigils_list():
+    """Le codex : métriques mesurées des 56 motifs (symbolcodex/metrics.json).
+    Alimente l'onglet vitrine Sigils."""
+    import json
+    p = Path(__file__).resolve().parent.parent / "symbolcodex" / "metrics.json"
+    if not p.exists():
+        raise HTTPException(503, "metrics.json absent (lancer bench_sigil.py)")
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(502, f"lecture codex échouée: {e}")
+
+
+@app.get("/api/search")
+def search_memory(q: str = "", top: int = 3):
+    """Mémoire sémantique : retrouve les lectures pertinentes (FlyHash).
+    Ferme la boucle apprendre → indexer → rappeler → citer."""
+    if not q.strip():
+        raise HTTPException(400, "q vide")
+    top = max(1, min(int(top), 10))
+    with _learn_lock:
+        from flyhash import KnowledgeIndex
+        try:
+            return KnowledgeIndex("knowledge").search(q, top=top)
+        except Exception as e:
+            raise HTTPException(502, f"recherche échouée: {e}")
+
+
+@app.post("/api/reservoir")
+def reservoir_endpoint(req: ReservoirRequest):
+    """Réservoir sigillaire en service : fit sur la 1re moitié de `series`,
+    prédit à `horizon`, retourne R². Garde-fous CPU (série ≤ 2000 pts)."""
+    from reservoir_kit import SigilReservoir, r2
+    from bench_sigil import PATTERNS
+    if req.pattern not in PATTERNS:
+        raise HTTPException(400, f"pattern inconnu (choix: {len(PATTERNS)} motifs)")
+    if not 20 <= len(req.series) <= 2000:
+        raise HTTPException(400, "series : 20..2000 points")
+    if not 1 <= req.horizon <= 50:
+        raise HTTPException(400, "horizon : 1..50")
+    try:
+        u = np.asarray(req.series, dtype=np.float32)
+        y = np.concatenate([np.zeros(req.horizon), u[:-req.horizon]])
+        cut = len(u) // 2
+        r = SigilReservoir(pattern=req.pattern, n=32, washout=20)
+        r.fit(u[:cut], y[:cut])
+        p = r.predict(u[cut:])
+        score = r2(y[cut:], p)
+    except Exception as e:
+        raise HTTPException(502, f"réservoir échoué: {e}")
+    return {"pattern": req.pattern, "horizon": req.horizon,
+            "r2": round(score, 4), "n": len(req.series)}
+
+
+@app.post("/api/ie/generate")
+def ie_generate(req: IEGenerateRequest):
+    """Générateur IE à la demande (style EvolveScaler miniature) : un monde
+    exécutable produit histoire + question + réponse + checklist."""
+    from ie_worlds import LedgerWorld, RosterWorld
+    if req.world not in ("ledger", "roster"):
+        raise HTTPException(400, "world: ledger | roster")
+    if not 10 <= req.n_events <= 300:
+        raise HTTPException(400, "n_events : 10..300")
+    if not 0.0 <= req.invalid_rate <= 0.5:
+        raise HTTPException(400, "invalid_rate : 0..0.5")
+    try:
+        w = LedgerWorld(req.seed) if req.world == "ledger" else RosterWorld(req.seed)
+        w.gen(req.n_events, invalid_rate=req.invalid_rate)
+        ops = ("total", "top", "owes") if req.world == "ledger" else ("duty", "hours")
+        op = req.op if req.op in ops else ops[req.seed % len(ops)]
+        q, a, chk = w.ask(op)
+    except Exception as e:
+        raise HTTPException(502, f"génération IE échouée: {e}")
+    return {"world": req.world, "op": op, "context": w.render(),
+            "question": q, "answer": a, "checklist": chk}
 
 
 # --- ⚗️ Labo des lésions virtuelles ---
