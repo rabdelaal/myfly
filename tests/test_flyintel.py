@@ -225,6 +225,22 @@ def test_ie_worlds():
     print("ok test_ie_worlds")
 
 
+def test_htc():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    import numpy as np
+    from bench_htc_core import HTCCore
+    htc = HTCCore()
+    rng = np.random.default_rng(11)
+    for t in range(10):
+        a = rng.choice(np.array([-128, -1, 0, 1, 127], dtype=np.int8), size=64)
+        w = rng.choice(np.array([-1, 0, 1], dtype=np.int8), size=(4, 64))
+        y = htc.gemv4x64(a, w, 0)
+        ref = (a.astype(np.int64)[:, None] * w.astype(np.int64).T).sum(axis=0)
+        assert np.array_equal(y.astype(np.int64), ref), t
+    print("ok test_htc")
+
+
 def test_websearch():
     import requests as _rq
     from flyintel import websearch
@@ -257,6 +273,6 @@ if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
                test_benchmark_smoke, test_metaphor_stub, test_sigil,
-               test_usecases, test_ie_worlds, test_websearch]:
+               test_usecases, test_ie_worlds, test_htc, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")
