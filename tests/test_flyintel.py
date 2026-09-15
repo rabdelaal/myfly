@@ -275,6 +275,25 @@ def test_collatz_fib():
     print("ok test_collatz_fib")
 
 
+def test_quantum_scram():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    import numpy as np
+    from quantum_scram import (diag, ising_hamiltonian, otoc, op_at, X, Z,
+                               page_curve, sff, gjw)
+    E, U = diag(ising_hamiltonian(8))
+    assert E.shape == (256,)
+    C = otoc(E, U, op_at(X, 0, 8), op_at(Z, 7, 8), np.linspace(0, 12, 7))
+    assert abs(C[0]) < 1e-9 and C[-1] > 0.5, C  # croissance + saturation
+    S = page_curve(E, U, 8, 4, np.linspace(0, 12, 7))
+    assert abs(S[-1] - 2.2726) / 2.2726 < 0.15, S  # limite de Page à 15%
+    K = sff(E, beta=0.0, ts=np.logspace(-1, 2.2, 30))
+    assert 1 / 256 / 5 < K[-5:].mean() < 1 / 256 * 5  # plateau ~1/dim
+    D0, D1 = gjw(E, U, 1.0, 4.0, 6.0, 8.0)
+    assert D0 < 1e-9 and D1 > 100 * max(D0, 1e-18) and D1 > 0.01, (D0, D1)
+    print("ok test_quantum_scram")
+
+
 def test_websearch():
     import requests as _rq
     from flyintel import websearch
@@ -308,6 +327,6 @@ if __name__ == "__main__":
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
                test_benchmark_smoke, test_metaphor_stub, test_sigil,
                test_usecases, test_ie_worlds, test_memory_loop, test_htc,
-               test_collatz_fib, test_websearch]:
+               test_collatz_fib, test_quantum_scram, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")
