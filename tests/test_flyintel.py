@@ -174,6 +174,21 @@ def test_sigil():
     print("ok test_sigil")
 
 
+def test_usecases():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    from flyhash import FlyHash
+    fh = FlyHash().index(["queen checkmate attack", "cat sleeps rug"])
+    assert fh.query("queen checkmate", top=1)[0][0] == 0
+    from reservoir_kit import SigilReservoir
+    r = SigilReservoir(pattern="flower", n=32, washout=10).fit([0.0] * 200, [1.0] * 200)
+    assert len(r.predict([0.0] * 60)) == 50
+    from cpg_demo import gait
+    ph, dom = gait(T=300)
+    assert len(ph) == 6 and 0.0 < dom < 0.5
+    print("ok test_usecases")
+
+
 def test_websearch():
     import requests as _rq
     from flyintel import websearch
@@ -199,6 +214,7 @@ def test_websearch():
 if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
-               test_benchmark_smoke, test_metaphor_stub, test_sigil, test_websearch]:
+               test_benchmark_smoke, test_metaphor_stub, test_sigil,
+               test_usecases, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")

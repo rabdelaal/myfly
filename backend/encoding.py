@@ -184,11 +184,16 @@ class AnythingEncoder:
             size=(self.n_features, n_sensory)).astype(np.float32)
 
     def _text_features(self, text: str) -> np.ndarray:
-        """Sac-de-trigrammes de caractères haché → (n_text,), déterministe."""
+        """Sac-de-trigrammes de caractères haché → (n_text,), déterministe.
+        ponytail: hash() de Python est salé par processus (PYTHONHASHSEED) —
+        on utilise md5 (stable) pour que l'index/query restent cohérents."""
+        import hashlib
         v = np.zeros(self.n_text, dtype=np.float32)
         t = f" {text.lower()} "
         for i in range(max(len(t) - 2, 1)):
-            v[hash(t[i:i + 3]) % self.n_text] += 1.0
+            tri = t[i:i + 3].encode("utf-8", "ignore")
+            h = int.from_bytes(hashlib.md5(tri).digest()[:4], "little")
+            v[h % self.n_text] += 1.0
         n = float(np.linalg.norm(v))
         return v / n if n > 0 else v
 
