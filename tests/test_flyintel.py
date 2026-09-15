@@ -294,6 +294,25 @@ def test_quantum_scram():
     print("ok test_quantum_scram")
 
 
+def test_quantum_mss():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    import numpy as np
+    from quantum_scram import (diag, ising_hamiltonian, otoc_thermal, op_at,
+                               X, Z, fit_lambda, sff_ramp_fit)
+    ts = np.linspace(0, 10, 101)  # exponentielle synthétique : recovery exacte
+    lam, err, n = fit_lambda(ts, 0.01 * np.exp(0.8 * ts))
+    assert abs(lam - 0.8) < 1e-9 and n > 10, (lam, n)
+    E, U = diag(ising_hamiltonian(8))
+    C = otoc_thermal(E, U, op_at(X, 0, 8), op_at(Z, 7, 8), 0.5,
+                     np.linspace(0, 14, 141))
+    lam, _, _ = fit_lambda(np.linspace(0, 14, 141), C)
+    assert 1.0 < lam < 12.57, lam  # sous la borne MSS 2πT, bien au-dessus de 0
+    _, _, s_sm, r2_sm, _, _ = sff_ramp_fit(E)
+    assert 0.5 < s_sm < 1.5 and r2_sm > 0.7, (s_sm, r2_sm)  # rampe ~1
+    print("ok test_quantum_mss")
+
+
 def test_websearch():
     import requests as _rq
     from flyintel import websearch
@@ -327,6 +346,7 @@ if __name__ == "__main__":
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
                test_benchmark_smoke, test_metaphor_stub, test_sigil,
                test_usecases, test_ie_worlds, test_memory_loop, test_htc,
-               test_collatz_fib, test_quantum_scram, test_websearch]:
+               test_collatz_fib, test_quantum_scram, test_quantum_mss,
+               test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")

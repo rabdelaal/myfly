@@ -63,6 +63,67 @@ def otoc(E, U, W, V, ts):
     return np.array(out)
 
 
+def otoc_thermal(E, U, W, V, beta, ts):
+    """OTOC thermique : C(t) = 1 - Re Tr[rho W(t) V W(t) V], rho = e^{-bH}/Z.
+    Tout en base propre (O(d^3) par pas) : WE, VE précalculés une fois."""
+    p = np.exp(-beta * (E - E.min()))
+    p /= p.sum()
+    WE = U.conj().T @ W @ U
+    VE = U.conj().T @ V @ U
+    dE = E[:, None] - E[None, :]
+    out = []
+    for t in ts:
+        Wt = WE * np.exp(1j * t * dE)
+        M = (p[:, None] * Wt) @ VE @ Wt @ VE
+        out.append(float(1.0 - np.trace(M).real))
+    return np.array(out)
+
+
+def fit_lambda(ts, C, lo=0.08, hi=0.25):
+    """Exposant de Lyapunov : fit log C = a + λt sur la montée initiale.
+    Fenêtre [0.08, 0.25] : assez haute pour sortir du bruit, assez basse
+    pour rester avant saturation ET revivals (l'OTOC β=1 oscille après
+    t~7, β=2 dès t~8 — fitter au-delà écrase la pente vers 0)."""
+    m = (C > lo) & (C < hi)
+    if m.sum() < 4:
+        return float("nan"), float("nan"), 0
+    x, y = ts[m], np.log(C[m])
+    A = np.column_stack([x, np.ones_like(x)])
+    sol, res, _, _ = np.linalg.lstsq(A, y, rcond=None)
+    lam, n = sol[0], int(m.sum())
+    err = float(np.sqrt(res[0] / max(n - 2, 1) / ((x ** 2).sum())) if len(res) else float("nan"))
+    return float(lam), err, n
+
+
+def sff_ramp_fit(E, beta=0.0, npts=200):
+    """Ajuste la rampe SFF en log-log : logK = a + s·logt entre la fin du
+    dip et 50% du plateau. À N=8 la rampe brute oscille sur un ordre de
+    grandeur : on ajuste la MOYENNE GÉOMÉTRIQUE glissante (pratique standard,
+    un seul Hamiltonien = pas de moyenne de désordre), et on reporte aussi
+    le R² brut pour l'honnêteté."""
+    tl = np.logspace(-1, 2.4, npts)
+    K = sff(E, beta=beta, ts=tl)
+    plat = K[-20:].mean()
+    i_dip = int(np.argmin(K))
+    i1 = int(np.searchsorted(K[i_dip:], plat * 0.5)) + i_dip
+    i1 = max(i1, i_dip + 5)
+    x, y = np.log(tl[i_dip:i1]), np.log(K[i_dip:i1])
+
+    def _fit(xx, yy):
+        A = np.column_stack([xx, np.ones_like(xx)])
+        sol, res, _, _ = np.linalg.lstsq(A, yy, rcond=None)
+        ss = float(((yy - yy.mean()) ** 2).sum())
+        r2 = 1.0 - float(res[0]) / ss if ss > 0 and len(res) else float("nan")
+        return float(sol[0]), r2
+
+    s_raw, r2_raw = _fit(x, y)
+    w = 5  # moyenne géométrique glissante
+    ys = np.array([y[max(0, i - w + 1):i + 1].mean() for i in range(len(y))])
+    s_sm, r2_sm = _fit(x, ys)
+    return (s_raw, r2_raw, s_sm, r2_sm, float(tl[i_dip]),
+            float(tl[min(i1, len(tl) - 1)]))
+
+
 def neel_state(N=8):
     v = np.zeros(2 ** N, dtype=complex)
     idx = sum((i % 2) * (2 ** (N - 1 - i)) for i in range(N))  # |0101...>
@@ -205,5 +266,28 @@ def main(quick=False):
             print(f"   t_read={tt}: D_sans={a:.2e} D_avec={b:.3f}")
 
 
+def main_mss():
+    """OTOC thermique + borne MSS (λ ≤ 2πT) et rampe SFF ajustée."""
+    N = 8
+    E, U = diag(ising_hamiltonian(N))
+    W = op_at(X, 0, N)
+    V = op_at(Z, N - 1, N)
+    ts = np.linspace(0, 14, 141)
+    print("OTOC thermique : fit log C = a + L*t ; borne MSS L <= 2*pi*T (J=1)")
+    for beta in (0.5, 1.0, 2.0):
+        C = otoc_thermal(E, U, W, V, beta, ts)
+        lam, err, n = fit_lambda(ts, C)
+        T = 1.0 / beta
+        print(f"  beta={beta} (T={T:.1f}) : L={lam:.3f}+-{err:.3f} ({n} pts) | "
+              f"2piT={2 * np.pi * T:.2f} | L/2piT={lam / (2 * np.pi * T):.3f} "
+              f"| Cmax={C.max():.3f}")
+    s_raw, r2_raw, s_sm, r2_sm, td, tp = sff_ramp_fit(E)
+    print(f"SFF rampe log-log t=[{td:.2f},{tp:.2f}] : brute s={s_raw:.2f} "
+          f"(R²={r2_raw:.2f}) | lissée s={s_sm:.2f} (R²={r2_sm:.3f}, attendu ~1)")
+
+
 if __name__ == "__main__":
-    main("--quick" in sys.argv)
+    if len(sys.argv) > 1 and sys.argv[1] == "mss":
+        main_mss()
+    else:
+        main("--quick" in sys.argv)
