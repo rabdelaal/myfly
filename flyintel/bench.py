@@ -11,6 +11,11 @@ Domains (each a pure function of (brain, conn, readout?)):
   - speed         : simulation wall-clock (ms per step) with backend dispatch
   - metaphor      : metabrain stub — motor separability of non-chess options
                     encoded via AnythingEncoder (transfer scored in Phase 2)
+  - ie_state      : EvolveScaler-style ground truth — executable world
+                    (ledger) replayed in code; readout must pick the
+                    code-derived answer over the naive trap (which counts
+                    invalid records). v0 encodes options only (l'historique
+                    n'est pas injecté : il faudra des canaux par tour).
 
 Every domain returns (metric_name -> value). Results are merged into
 leaderboard.json keyed by domain; a higher `score` column ranks better.
@@ -179,6 +184,53 @@ def metaphor(brain, conn, readout=None, encoder=None, steps=100) -> dict:
 
 
 # --------------------------------------------------------------------------
+# Domain: ie_state — vérité terrain par re-exécution (EvolveScaler).
+# Un LedgerWorld génère un historique avec révisions/annulations/bruit ;
+# la bonne réponse vient du REPLAY du code, le piège naïf compte les
+# enregistrements invalides. v0 : options seules encodées (pas l'historique).
+# --------------------------------------------------------------------------
+def ie_state(brain, conn, readout=None, encoder=None, steps=100) -> dict:
+    from encoding import AnythingEncoder
+    from ie_worlds import LedgerWorld
+    w = LedgerWorld(seed=11)
+    w.gen(40, invalid_rate=0.15)
+    q, truth, chk = w.ask("total")
+    # Piège naïf : tout compter, y compris annulés/révisés (avant révision).
+    naive = 0
+    seen = {}
+    for e in w.events:
+        if e["kind"] == "add":
+            seen[e["id"]] = e["amount"]
+            naive += e["amount"]
+    trap = str(naive)
+    if trap == truth:  # pas de divergence : insipide, on le signale
+        return {"score": None, "detail": "seed sans divergence valide/piège"}
+    enc = encoder if isinstance(encoder, AnythingEncoder) else AnythingEncoder(
+        n_sensory=int(conn["is_sensory"].sum()))
+    with torch.no_grad():
+        currents = enc.encode_options(
+            [f"{q} {truth}", f"{q} {trap}"]).to(brain.device)
+        pats = []
+        for o in range(currents.shape[1]):
+            r = brain.run(currents[:, o:o + 1], n_steps=steps, record_every=10)
+            pats.append(r["motor_mean"].cpu().numpy().ravel())
+    sep = float(np.linalg.norm(pats[0] - pats[1]))
+    out = {"score": None,
+           "detail": f"stub: sep {sep:.3f}, truth={truth} trap={trap}, "
+                     f"readout required to score"}
+    if readout is not None:
+        try:
+            with torch.no_grad():
+                s = [float(readout(p.reshape(1, -1)).ravel()[0]) for p in pats]
+            good = int(s[0] > s[1])
+            out["score"] = float(good)
+            out["detail"] += f" | readout picks {'truth' if good else 'TRAP'} (margin {s[0]-s[1]:+.3f})"
+        except Exception as e:
+            out["detail"] += f" | readout failed: {e}"
+    return out
+
+
+# --------------------------------------------------------------------------
 # Domain: speed — wall-clock per step, both backends if available
 # --------------------------------------------------------------------------
 def speed(brain, conn, steps=200) -> dict:
@@ -200,6 +252,7 @@ DOMAINS = {
     "dynamics": dynamics,
     "speed": speed,
     "metaphor": metaphor,
+    "ie_state": ie_state,
 }
 
 
@@ -212,7 +265,7 @@ def run_all(brain, conn, readout=None, encoder=None, val_boards=None,
         try:
             if name == "chess_reflex":
                 res = fn(brain, conn, readout, encoder, val_boards, targets)
-            elif name == "metaphor":
+            elif name in ("metaphor", "ie_state"):
                 res = fn(brain, conn, readout, encoder)
             elif name == "feeding":
                 res = fn(brain, conn)

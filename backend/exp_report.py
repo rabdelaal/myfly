@@ -109,10 +109,29 @@ def E5():
         print(f"  {name:<10} domHz={dom:.4f} spread={spread:.2f} rad")
 
 
+def E6():
+    print("== E6 : rappel après RÉVISION (réservoir hanté par l'ancien ?) ==")
+    print("   drive constant par morceaux + écrasements ; cible = valeur à t-3.")
+    print("   Hypothèse : les boucles retiennent le périmé (moins bien).")
+    from reservoir_kit import SigilReservoir, r2
+    rng = np.random.default_rng(3)
+    T, seg = 1200, 40
+    u = np.repeat(rng.choice([-1.0, 1.0], size=T // seg), seg).astype(np.float32)
+    d = 3
+    y = np.concatenate([np.zeros(d), u[:-d]])
+    for name in ("flower", "isa", "yggdrasil", "random"):
+        pid = PATTERNS.index(name)
+        nn = SigilCircuit().native_n(pid)
+        r = SigilReservoir(pattern=name, n=nn if nn else 32, washout=20)
+        r.fit(u[:950], y[:950])
+        print(f"  {name:<10} R2={r2(y[950:], r.predict(u[950:])):+.3f}")
+
+
 if __name__ == "__main__":
     E1()
     E2()
     E3()
     E4()
     E5()
+    E6()
     print("EXPERIENCES OK")

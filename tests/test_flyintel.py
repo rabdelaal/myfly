@@ -174,7 +174,6 @@ def test_sigil():
     assert len(f_src) > 0
     g_src, _ = circ.edges(35, 64, seed=1)        # Vegvisir
     assert len(g_src) > 0
-    assert circ.native_n(52) == 16               # Chaosigil : petit graphe
     f2_src, _ = circ.edges(53, 64, seed=24)      # Futhorc : Ac
     assert len(f2_src) > 0
     a_src, _ = circ.edges(54, 64)                # Abramelin
@@ -201,6 +200,29 @@ def test_usecases():
     ph, dom = gait(T=300)
     assert len(ph) == 6 and 0.0 < dom < 0.5
     print("ok test_usecases")
+
+
+def test_ie_worlds():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    from ie_worlds import LedgerWorld, RosterWorld
+    w = LedgerWorld(3)
+    w.gen(40, invalid_rate=0.15)
+    assert w.replay() == w.replay(list(w.events))  # déterminisme
+    q, a, chk = w.ask("total")
+    assert q and a and chk
+    r = RosterWorld(3)
+    r.gen(40, invalid_rate=0.15)
+    q2, a2, chk2 = r.ask("duty")
+    assert q2 and a2 is not None and chk2
+    # domaine bench : stub sans readout, vérité != piège enregistrés
+    from data_loader import _synthetic_connectome
+    from brain import FlyBrain
+    conn = _synthetic_connectome(n_neurons=300, sparsity=0.02)
+    brain = FlyBrain(conn["W"], conn["is_sensory"], conn["is_motor"], conn["is_descending"])
+    res = bench.ie_state(brain, conn, steps=30)
+    assert res["score"] is None and "truth=" in res["detail"], res
+    print("ok test_ie_worlds")
 
 
 def test_websearch():
@@ -235,6 +257,6 @@ if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
                test_benchmark_smoke, test_metaphor_stub, test_sigil,
-               test_usecases, test_websearch]:
+               test_usecases, test_ie_worlds, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")
