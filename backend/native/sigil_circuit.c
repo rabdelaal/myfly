@@ -62,6 +62,9 @@
  *  50 NAZAR     : 3 anneaux + rayons
  *  51 OM        : boucle + arc + croissant
  *  52 CHAOSIGIL : graphe scellé par seed (n=16, intention -> glyphe)
+ *  53 FUTHORC   : 24 + 9 anglo-saxonnes, enchaînées (variant = seed%33)
+ *  54 ABRAMELIN : grille + accords miroirs (palindromes de lettres)
+ *  55 PLANETARY : anneau + moyeu + k cordes (variant = seed%7)
  *
  * Design : les arêtes sont orientées (src -> dst). RING est un cycle orienté
  * (onde qui tourne) ; les autres motifs sont bidirectionnels (réverbération).
@@ -140,7 +143,11 @@
 #define SIGIL_NAZAR 50      /* mauvais œil : 3 anneaux + rayons */
 #define SIGIL_OM 51         /* Om : boucle + arc + croissant (impression) */
 #define SIGIL_CHAOSIGIL 52  /* chaos : graphe scellé par seed (n=16) */
-#define SIGIL_NPATTERNS 53
+/* --- Derniers manquants du codex --- */
+#define SIGIL_FUTHORC 53    /* anglo-saxon : 24 + 9 runes (variant = seed%33) */
+#define SIGIL_ABRAMELIN 54  /* carrés Abramelin : grille + accords miroirs */
+#define SIGIL_PLANETARY 55  /* Agrippa : anneau + moyeu + k cordes (seed%7) */
+#define SIGIL_NPATTERNS 56
 
 static const char *SIGIL_NAMES[SIGIL_NPATTERNS] = {
     "seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
@@ -151,7 +158,8 @@ static const char *SIGIL_NAMES[SIGIL_NPATTERNS] = {
     "goetic", "enochian", "veve", "ogham", "adinkra",
     "futhark", "galdr", "valknut", "mjolnir", "yggdrasil", "shieldknot",
     "brigid", "caduceus", "wedjat", "scarab", "djed", "monas", "rosecross",
-    "alchemy", "taijitu", "hamsa", "nazar", "om", "chaosigil"
+    "alchemy", "taijitu", "hamsa", "nazar", "om", "chaosigil",
+    "futhorc", "abramelin", "planetary"
 };
 
 /** Taille canonique (0 = redimensionnable). */
@@ -331,6 +339,46 @@ static void rune_glyph(int v, int b, int m,
             break;
         case 34: /* SOL jeune : slash */
             push_edge(src, dst, max_edges, mm, b, widx(b,e,m));
+            break;
+        /* --- Futhorc anglo-saxon : 9 runes propres (Ac..Gar) --- */
+        case 40: /* AC (chêne) : bâton + X latéral */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q2,m));
+            break;
+        case 41: /* ÆSC (frêne) : bol + brindille haute */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q2+2,m));
+            break;
+        case 42: /* YR (arc) : bâton + arc qui revient */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q2,m));
+            break;
+        case 43: /* IOR (anguille) : bâton + double zigzag */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2+1,m), widx(b,q3,m));
+            break;
+        case 44: /* EAR (terre) : bâton + barre haute */
+            push2(src, dst, max_edges, mm, widx(b,1,m), widx(b,3,m));
+            break;
+        case 45: /* CWEORTH (feu) : bâton + diagonale longue (= ehwaz, récurrent) */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q3,m));
+            break;
+        case 46: /* CALC (coupe) : bâton + coupe convergente */
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,e,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3+1,m), widx(b,e,m));
+            break;
+        case 47: /* STAN (pierre) : bâton + losange (= othala + bâton) */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q1+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q1,m));
+            break;
+        case 48: /* GAR (lance) : bâton + double X */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2+1,m), widx(b,q3,m));
             break;
         default: break;
     }
@@ -882,6 +930,56 @@ int sigil_edges(int pattern, int n, uint32_t seed,
             int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
             push_edge(src, dst, max_edges, &m, a, b);
         }
+    } else if (pattern == SIGIL_FUTHORC) {
+        /* Futhorc : 24 aînées (mêmes glyphes, conservés) + 9 propres
+         * (Ac, Æsc, Yr, Ior, Ear, Cweorth, Calc, Stan, Gar : v = 40..48).
+         * Inscription enchaînée comme FUTHARK. */
+        int v0 = (int)(seed % 33);
+        int k = 1 + (int)(seed % 3);
+        int base = 0;
+        for (int j = 0; j < k; ++j) {
+            int w = (v0 + 7 * j) % 33;
+            int vv = (w < 24) ? w : (40 + (w - 24));
+            int sz = (j < k - 1) ? (n / k) : (n - base);
+            if (sz >= 4)
+                rune_glyph(vv, base, sz, src, dst, max_edges, &m);
+            else
+                for (int i = base; i < base + sz - 1; ++i)
+                    push_edge(src, dst, max_edges, &m, i, i + 1);
+            if (j < k - 1 && base + sz < n)
+                push_edge(src, dst, max_edges, &m, base + sz - 1, base + sz);
+            base += sz;
+        }
+    } else if (pattern == SIGIL_ABRAMELIN) {
+        /* Carrés de lettres palindromes : grille torique + accords miroirs
+         * (chaque nœud lié à son miroir sur les deux axes = la contrainte
+         * palindrome du carré magique de lettres). */
+        int s = 1;
+        while ((s + 1) * (s + 1) <= n) ++s;
+        if (s < 2) s = 2;
+        for (int i = 0; i < n; ++i) {
+            push2(src, dst, max_edges, &m, i, (i + 1) % n);
+            push2(src, dst, max_edges, &m, i, (i + s) % n);
+            int x = i % s, y = (i / s) % s;
+            int32_t mx = (int32_t)(y * s + (s - 1 - x));
+            int32_t my = (int32_t)(((s - 1 - y) * s + x));
+            if (mx < n) push2(src, dst, max_edges, &m, i, mx);
+            if (my < n && my != mx) push2(src, dst, max_edges, &m, i, my);
+        }
+    } else if (pattern == SIGIL_PLANETARY) {
+        /* Sceaux planétaires d'Agrippa (7) : anneau + moyeu (les sphères
+         * tournent autour du centre) + k cordes scellées, k = 3 + planète.
+         * variant = seed%7 : 0 Saturne .. 6 Lune. */
+        int v = (int)(seed % 7), k = 3 + v;
+        for (int i = 0; i < n; ++i) {
+            push2(src, dst, max_edges, &m, i, (i + 1) % n);
+            if (i > 0) push2(src, dst, max_edges, &m, 0, i);
+        }
+        for (int c = 0; c < k; ++c) {
+            int32_t a = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            push2(src, dst, max_edges, &m, a, b);
+        }
     } else {
         return -1;
     }
@@ -962,6 +1060,16 @@ int main(void) {
         for (int g = 0; g < 4; ++g) {
             m = sigil_edges(SIGIL_GALDR, 64, (uint32_t)g, src, dst, 8 * 128);
             if (m <= 0) { printf("FAIL galdr g=%d\n", g); fails++; }
+        }
+        /* Futhorc : les 33 runes (24 + 9) */
+        for (int v = 0; v < 33; ++v) {
+            m = sigil_edges(SIGIL_FUTHORC, 64, (uint32_t)v, src, dst, 8 * 128);
+            if (m <= 0) { printf("FAIL futhorc v=%d\n", v); fails++; }
+        }
+        /* Planétaires : les 7 sceaux */
+        for (int v = 0; v < 7; ++v) {
+            m = sigil_edges(SIGIL_PLANETARY, 64, (uint32_t)v, src, dst, 8 * 128);
+            if (m <= 0) { printf("FAIL planetary v=%d\n", v); fails++; }
         }
         if (sigil_edges(99, 64, 1, src, dst, 8 * 128) != -1) { printf("FAIL bad pattern\n"); fails++; }
         if (sigil_edges(0, 2, 1, src, dst, 8 * 128) != -1) { printf("FAIL small n\n"); fails++; }

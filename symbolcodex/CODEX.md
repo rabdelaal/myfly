@@ -59,7 +59,22 @@ Légende statut : ✅ implémenté + benché · 🔲 planifié · ❌ écarté (
 Note 1D honnête : les côtés (gauche/droite) n'existent pas en projection 1D —
 seules direction haut/bas et boucles survivent. Les codes identiques entre
 ères (= thurisaz/thurs, isa/iss…) sont une parenté historique réelle, pas un bug.
-Futhorc anglo-saxon : 🔲 extension (voyelles = mêmes briques bâton+traits).
+
+## Runes — Futhorc anglo-saxon (`futhorc` variant = seed%33)
+
+24 aînées conservées (mêmes glyphes, variant 0..23) + 9 propres (variant 24..32) :
+
+| # | Rune | Nom | Traits encodés |
+|---|---|---|---|
+| 24 | ᚪ | Ac (chêne) | bâton + X latéral |
+| 25 | ᚫ | Æsc (frêne) | bol + brindille haute |
+| 26 | ᚣ | Yr (arc) | bâton + arc qui revient |
+| 27 | ᛡ | Ior (anguille) | bâton + double zigzag |
+| 28 | ᛠ | Ear (terre) | bâton + barre haute |
+| 29 | ᛢ | Cweorth (feu) | bâton + diagonale longue |
+| 30 | ᛣ | Calc (coupe) | bâton + coupe convergente |
+| 31 | ᛥ | Stan (pierre) | bâton + losange (= othala + bâton) |
+| 32 | ᚸ | Gar (lance) | bâton + double X |
 
 ## Staves islandais — `galdr` (variant = seed%4, Galdrabók et manuscrits)
 
@@ -100,7 +115,7 @@ Futhorc anglo-saxon : 🔲 extension (voyelles = mêmes briques bâton+traits).
 | Monas Hieroglyphica (Dee : soleil + croix + croissant) | `monas` | ✅ |
 | Rose-Croix (croix latine + rose) | `rosecross` (croix + triangle central) | ✅ |
 | Sceau de Baphomet | ❌ écarté : figuratif (tête de bouc), pas topologique |
-| Carrés Abramelin (grilles de lettres) | 🔲 planifié (grille + contraintes de mots) |
+| Carrés Abramelin (grilles de lettres palindromes) | `abramelin` (grille torique + accords miroirs sur 2 axes) | ✅ |
 
 ## Égypte
 
@@ -155,6 +170,7 @@ Futhorc anglo-saxon : 🔲 extension (voyelles = mêmes briques bâton+traits).
 | Symbole | Pattern | Note |
 |---|---|---|
 | 4 éléments (triangles △▽ + barres) | `alchemy` (chaîne de triangles) | ✅ |
+| 7 sceaux planétaires d'Agrippa (anneau + moyeu + k cordes, k = 3+planète, variant = seed%7 : Saturne..Lune) | `planetary` | ✅ |
 | Sceaux planétaires (Agrippa : 7 sceaux) | 🔲 planifié (famille : anneau + k cordes, k = planète) |
 | Sigils du chaos (intention → glyphe unique) | `chaosigil` (n=16, seed = hash d'intention) | ✅ |
 | Ouroboros (serpent qui se mord) | `ouroboros` (cycle + morsure) | ✅ |

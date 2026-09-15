@@ -29,7 +29,7 @@ PATTERNS = ["seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
             "futhark", "galdr", "valknut", "mjolnir", "yggdrasil",
             "shieldknot", "brigid", "caduceus", "wedjat", "scarab", "djed",
             "monas", "rosecross", "alchemy", "taijitu", "hamsa", "nazar",
-            "om", "chaosigil"]
+            "om", "chaosigil", "futhorc", "abramelin", "planetary"]
 
 _int_p = ctypes.POINTER(ctypes.c_int32)
 _float_p = ctypes.POINTER(ctypes.c_float)
