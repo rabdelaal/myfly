@@ -23,7 +23,9 @@ _DLL = Path(__file__).parent / "native" / "sigil_circuit.dll"
 PATTERNS = ["seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
             "hexagram", "pentacle", "tree", "ouroboros", "triquetra", "ankh",
             "sriyanta", "triskel", "vesica",
-            "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune"]
+            "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune",
+            "flower", "metatron", "iching", "bagua", "yetzirah", "labyrinth",
+            "kolam", "goetic", "enochian", "veve", "ogham", "adinkra"]
 
 _int_p = ctypes.POINTER(ctypes.c_int32)
 _float_p = ctypes.POINTER(ctypes.c_float)
@@ -54,7 +56,7 @@ class SigilCircuit:
         return int(self.dll.sigil_native_n(pattern))
 
     def edges(self, pattern: int, n: int, seed: int = 1234):
-        cap = 8 * n
+        cap = max(8 * n, n * n)  # n*n pour les graphes denses (K13, K22)
         src = np.zeros(cap, dtype=np.int32)
         dst = np.zeros(cap, dtype=np.int32)
         m = self.dll.sigil_edges(

@@ -31,6 +31,18 @@
  *  19 HAGALAZ   : échelle : deux lignes + barreaux (grêle, H répété)
  *  20 OTHALA    : chaîne de losanges (héritage, rhombus tiling)
  *  21 BINDRUNE  : ligne + 8 cordes scellées par seed (rune liée)
+ *  22 FLOWER    : Fleur de Vie : treillis hexagonal torique
+ *  23 METATRON  : Cube de Métatron : graphe complet K13 (n=13)
+ *  24 ICHING    : Yi Jing : 64 hexagrammes = hypercube Q6 (n=64)
+ *  25 BAGUA     : Bagua : 8 trigrammes = cube Q3 (n=8)
+ *  26 YETZIRAH  : Sefer Yetzirah : 231 portes = K22 complet (n=22)
+ *  27 LABYRINTH : labyrinthe unicursal : chemin hamiltonien en serpent
+ *  28 KOLAM     : pulli kolam : tore à 8-connectivité (boucles fermées)
+ *  29 GOETIC    : sceau goétique : anneau + 8 cordes internes (seed)
+ *  30 ENOCHIAN  : Sigillum Dei : anneau + heptagramme + moyeu
+ *  31 VEVE      : vèvè : carrefour en croix + anneau + paires miroir
+ *  32 OGHAM    : ogham : bâton + rameaux culs-de-sac (sinks)
+ *  33 ADINKRA   : nkyinkyim : zigzag + torsades longues
  *
  * Design : les arêtes sont orientées (src -> dst). RING est un cycle orienté
  * (onde qui tourne) ; les autres motifs sont bidirectionnels (réverbération).
@@ -75,18 +87,41 @@
 #define SIGIL_HAGALAZ 19    /* échelle : 2 lignes + barreaux (H répété) */
 #define SIGIL_OTHALA 20     /* chaîne de losanges (rhombus tiling) */
 #define SIGIL_BINDRUNE 21   /* rune liée : ligne + 8 cordes scellées (seed) */
-#define SIGIL_NPATTERNS 22
+/* --- Géométrie sacrée (structures validées par recherche web) --- */
+#define SIGIL_FLOWER 22     /* Fleur de Vie : treillis hexagonal torique */
+#define SIGIL_METATRON 23   /* Cube de Métatron : K13 complet (n=13) */
+#define SIGIL_ICHING 24     /* Yi Jing : 64 hexagrammes = hypercube Q6 (n=64) */
+#define SIGIL_BAGUA 25      /* Bagua : 8 trigrammes = cube Q3 (n=8) */
+#define SIGIL_YETZIRAH 26   /* Sefer Yetzirah : 231 portes = K22 complet (n=22) */
+#define SIGIL_LABYRINTH 27  /* labyrinthe unicursal : chemin hamiltonien serpent */
+#define SIGIL_KOLAM 28      /* pulli kolam : tore à 8-connectivité (boucles) */
+/* --- Sceaux rituels (constantes structurelles documentées) --- */
+#define SIGIL_GOETIC 29     /* goétie : anneau + 8 cordes internes (seed = démon) */
+#define SIGIL_ENOCHIAN 30   /* Sigillum Dei : anneau + heptagramme + moyeu */
+#define SIGIL_VEVE 31       /* vèvè : carrefour (croix) + anneau + paires miroir */
+#define SIGIL_OGHAM 32      /* ogham : bâton + rameaux culs-de-sac (dissipation) */
+#define SIGIL_ADINKRA 33    /* nkyinkyim : ligne zigzag + torsades longues */
+#define SIGIL_NPATTERNS 34
 
 static const char *SIGIL_NAMES[SIGIL_NPATTERNS] = {
     "seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
     "hexagram", "pentacle", "tree", "ouroboros", "triquetra", "ankh",
     "sriyanta", "triskel", "vesica",
-    "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune"
+    "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune",
+    "flower", "metatron", "iching", "bagua", "yetzirah", "labyrinth", "kolam",
+    "goetic", "enochian", "veve", "ogham", "adinkra"
 };
 
-/** Taille canonique (0 = redimensionnable). L'Arbre de Vie est fixe : 10. */
+/** Taille canonique (0 = redimensionnable). */
 int sigil_native_n(int pattern) {
-    return (pattern == SIGIL_TREE) ? 10 : 0;
+    switch (pattern) {
+        case SIGIL_TREE: return 10;      /* 10 sephiroth */
+        case SIGIL_METATRON: return 13;  /* 13 cercles du Fruit de Vie */
+        case SIGIL_ICHING: return 64;    /* 64 hexagrammes */
+        case SIGIL_BAGUA: return 8;      /* 8 trigrammes */
+        case SIGIL_YETZIRAH: return 22;  /* 22 lettres */
+        default: return 0;
+    }
 }
 
 static uint32_t lcg_next(uint32_t *s) {
@@ -303,6 +338,111 @@ int sigil_edges(int pattern, int n, uint32_t seed,
             int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
             push_edge(src, dst, max_edges, &m, a, b);
         }
+    } else if (pattern == SIGIL_FLOWER) {
+        int s = 1;                           /* treillis hexagonal torique */
+        while ((s + 1) * (s + 1) <= n) ++s;
+        if (s < 3) return -1;
+        for (int i = 0; i < n; ++i) {
+            int x = i % s, y = (i / s) % s;
+            int nb[6][2] = {{1,0},{0,1},{1,-1},{-1,0},{0,-1},{-1,1}};
+            for (int d = 0; d < 6; ++d) {
+                int xx = (x + nb[d][0] + s) % s, yy = (y + nb[d][1] + s) % s;
+                int32_t j = (int32_t)(yy * s + xx);
+                if (j < n) push2(src, dst, max_edges, &m, i, j);
+            }
+        }
+    } else if (pattern == SIGIL_METATRON) {
+        if (n != 13) return -1;              /* K13 : les 13 cercles reliés */
+        for (int i = 0; i < n; ++i)
+            for (int j = i + 1; j < n; ++j)
+                push2(src, dst, max_edges, &m, i, j);
+    } else if (pattern == SIGIL_ICHING) {
+        if (n != 64) return -1;              /* Q6 : un trait changé = arête */
+        for (int i = 0; i < n; ++i)
+            for (int k = 0; k < 6; ++k) {
+                int j = i ^ (1 << k);
+                if (j > i) push2(src, dst, max_edges, &m, i, j);
+            }
+    } else if (pattern == SIGIL_BAGUA) {
+        if (n != 8) return -1;               /* Q3 : trigrammes adjacents */
+        for (int i = 0; i < n; ++i)
+            for (int k = 0; k < 3; ++k) {
+                int j = i ^ (1 << k);
+                if (j > i) push2(src, dst, max_edges, &m, i, j);
+            }
+    } else if (pattern == SIGIL_YETZIRAH) {
+        if (n != 22) return -1;              /* 231 portes : K22 complet */
+        for (int i = 0; i < n; ++i)
+            for (int j = i + 1; j < n; ++j)
+                push2(src, dst, max_edges, &m, i, j);
+    } else if (pattern == SIGIL_LABYRINTH) {
+        int s = 1;                           /* serpent hamiltonien s×s */
+        while ((s + 1) * (s + 1) <= n) ++s;
+        if (s < 2) return -1;
+        int N = s * s, prev = -1;
+        for (int y = 0; y < s; ++y)
+            for (int xx = 0; xx < s; ++xx) {
+                int x = (y % 2 == 0) ? xx : (s - 1 - xx);
+                int cur = y * s + x;
+                if (prev >= 0) push_edge(src, dst, max_edges, &m, prev, cur);
+                prev = cur;
+            }
+        for (int j = N; j < n; ++j)          /* queue éventuelle */
+            push_edge(src, dst, max_edges, &m, j - 1, j);
+    } else if (pattern == SIGIL_KOLAM) {
+        int s = 1;                           /* tore à 8-connectivité */
+        while ((s + 1) * (s + 1) <= n) ++s;
+        if (s < 2) s = 2;
+        for (int i = 0; i < n; ++i) {
+            push2(src, dst, max_edges, &m, i, (i + 1) % n);
+            push2(src, dst, max_edges, &m, i, (i + s) % n);
+            push2(src, dst, max_edges, &m, i, (i + s + 1) % n);
+            push2(src, dst, max_edges, &m, i, (i + s - 1 + n) % n);
+        }
+    } else if (pattern == SIGIL_GOETIC) {
+        for (int i = 0; i < n; ++i)          /* cercle du sceau */
+            push_edge(src, dst, max_edges, &m, i, (i + 1) % n);
+        for (int c = 0; c < 8; ++c) {        /* glyphe interne (seed=démon) */
+            int32_t a = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            push2(src, dst, max_edges, &m, a, b);
+        }
+    } else if (pattern == SIGIL_ENOCHIAN) {
+        int k = n / 7;                       /* heptagramme {7/k} */
+        if (k < 2) k = 2;
+        for (int i = 0; i < n; ++i) {
+            push2(src, dst, max_edges, &m, i, (i + 1) % n);
+            push2(src, dst, max_edges, &m, i, (i + k) % n);
+            if (i > 0) push2(src, dst, max_edges, &m, 0, i);  /* moyeu */
+        }
+    } else if (pattern == SIGIL_VEVE) {
+        /* Carrefour de Legba d'abord, puis anneau, puis paires en miroir
+         * (symétrie bilatérale « comme en haut, comme en bas »). */
+        push2(src, dst, max_edges, &m, 0, n / 2);
+        push2(src, dst, max_edges, &m, n / 4, (3 * n) / 4);
+        for (int i = 0; i < n; ++i)
+            push2(src, dst, max_edges, &m, i, (i + 1) % n);
+        int k = n / 6;
+        if (k < 2) k = 2;
+        for (int i = 1; i <= n / 4; ++i) {
+            push2(src, dst, max_edges, &m, i, (i + k) % n);
+            push2(src, dst, max_edges, &m, (n - i) % n, (n - i - k + n) % n);
+        }
+    } else if (pattern == SIGIL_OGHAM) {
+        /* Bâton (druim) + rameaux culs-de-sac : les impasses dissipent,
+         * seules les lignes du bâton propagent. */
+        for (int i = 0; i + 1 < n; ++i) {
+            if (i % 2 == 0) {
+                push_edge(src, dst, max_edges, &m, i, i + 1);  /* rameau */
+                if (i + 2 < n)
+                    push_edge(src, dst, max_edges, &m, i, i + 2);  /* bâton */
+            }
+        }
+    } else if (pattern == SIGIL_ADINKRA) {
+        for (int i = 0; i + 1 < n; ++i)      /* zigzag porteur */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int i = 0; i + 5 < n; ++i)      /* torsades longues (nkyinkyim) */
+            push_edge(src, dst, max_edges, &m, i, i + 5);
     } else {
         return -1;
     }
@@ -365,6 +505,15 @@ int main(void) {
         /* Arbre de Vie : exactement 22 sentiers x2 = 44 arêtes */
         m = sigil_edges(SIGIL_TREE, 10, 1, src, dst, 8 * 128);
         if (m != 44) { printf("FAIL tree m=%d (attendu 44)\n", m); fails++; }
+        /* Graphes canoniques : comptes exacts */
+        m = sigil_edges(SIGIL_METATRON, 13, 1, src, dst, 8 * 128);
+        if (m != 156) { printf("FAIL metatron m=%d (attendu 156)\n", m); fails++; }
+        m = sigil_edges(SIGIL_YETZIRAH, 22, 1, src, dst, 8 * 128);
+        if (m != 462) { printf("FAIL yetzirah m=%d (attendu 462)\n", m); fails++; }
+        m = sigil_edges(SIGIL_ICHING, 64, 1, src, dst, 8 * 128);
+        if (m != 384) { printf("FAIL iching m=%d (attendu 384)\n", m); fails++; }
+        m = sigil_edges(SIGIL_BAGUA, 8, 1, src, dst, 8 * 128);
+        if (m != 24) { printf("FAIL bagua m=%d (attendu 24)\n", m); fails++; }
         if (sigil_edges(99, 64, 1, src, dst, 8 * 128) != -1) { printf("FAIL bad pattern\n"); fails++; }
         if (sigil_edges(0, 2, 1, src, dst, 8 * 128) != -1) { printf("FAIL small n\n"); fails++; }
     }

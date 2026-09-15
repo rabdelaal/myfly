@@ -161,6 +161,12 @@ def test_sigil():
     t_src, _ = circ.edges(9, 10)
     assert len(t_src) == 44, len(t_src)          # 22 sentiers x2
     assert circ.native_n(0) == 0                 # motifs redimensionnables
+    assert circ.native_n(26) == 22               # Yetzirah : 22 lettres
+    y_src, _ = circ.edges(26, 22)
+    assert len(y_src) == 462, len(y_src)         # 231 portes x2
+    i_src, _ = circ.edges(24, 64)
+    assert len(i_src) == 384, len(i_src)         # Q6 : 64*6/2 x2
+    assert circ.native_n(23) == 13               # Métatron : 13 cercles
     W, m = build_W(circ, 0, 32)
     rate, burst, dom, MC = run_and_measure(circ, W, T=300)
     assert 0.0 < rate < 0.5, rate
