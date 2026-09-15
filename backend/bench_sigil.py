@@ -25,7 +25,11 @@ PATTERNS = ["seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
             "sriyanta", "triskel", "vesica",
             "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune",
             "flower", "metatron", "iching", "bagua", "yetzirah", "labyrinth",
-            "kolam", "goetic", "enochian", "veve", "ogham", "adinkra"]
+            "kolam", "goetic", "enochian", "veve", "ogham", "adinkra",
+            "futhark", "galdr", "valknut", "mjolnir", "yggdrasil",
+            "shieldknot", "brigid", "caduceus", "wedjat", "scarab", "djed",
+            "monas", "rosecross", "alchemy", "taijitu", "hamsa", "nazar",
+            "om", "chaosigil"]
 
 _int_p = ctypes.POINTER(ctypes.c_int32)
 _float_p = ctypes.POINTER(ctypes.c_float)
@@ -153,7 +157,9 @@ def bench_speed(circ, W, steps=20000, reps=3):
 
 
 def main():
+    import json
     circ = SigilCircuit()
+    metrics = {}
     print(f"{'pattern':<10} {'n':>4} {'edges':>6} {'kpas/s':>8} {'rate':>7} "
           f"{'burst':>7} {'domHz':>7} {'MC':>6}")
     for p, name in enumerate(PATTERNS):
@@ -164,10 +170,20 @@ def main():
         rate, burst, dom, MC = run_and_measure(circ, W)
         print(f"{name:<10} {n:>4} {m:>6} {sps:>8.1f} {rate:>7.3f} "
               f"{burst:>7.2f} {dom:>7.4f} {MC:>6.2f}")
+        metrics[name] = {"id": p, "n": n, "edges": m,
+                         "kpas": round(sps, 1), "rate": round(rate, 4),
+                         "burst": round(burst, 2), "domHz": round(dom, 4),
+                         "MC": round(MC, 3)}
     print("\n--- vitesse vs taille (pattern seal) ---")
     for n in (32, 64, 128):
         W, _ = build_W(circ, 0, n)
         print(f"  n={n:<4} {bench_speed(circ, W) / 1000.0:>8.1f} kpas/s")
+    # Registre machine du codex : chaque bench écrase avec les mesures fraîches.
+    codex = Path(__file__).resolve().parent.parent / "symbolcodex"
+    codex.mkdir(exist_ok=True)
+    (codex / "metrics.json").write_text(
+        json.dumps(metrics, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"\nmetrics.json écrit ({len(metrics)} motifs) -> symbolcodex/")
 
 
 if __name__ == "__main__":

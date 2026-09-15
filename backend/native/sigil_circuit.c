@@ -43,6 +43,25 @@
  *  31 VEVE      : vèvè : carrefour en croix + anneau + paires miroir
  *  32 OGHAM    : ogham : bâton + rameaux culs-de-sac (sinks)
  *  33 ADINKRA   : nkyinkyim : zigzag + torsades longues
+ *  34 FUTHARK   : 24 aînées + 16 jeunes, enchaînées (variant = seed%40)
+ *  35 GALDR     : 4 staves islandais (variant = seed%4)
+ *  36 VALKNUT   : 3 triangles + triangle central
+ *  37 MJOLNIR   : manche + tête triangulaire
+ *  38 YGGDRASIL : DAG acyclique (premier motif sans cycle)
+ *  39 SHIELDKNOT: 4 anneaux carrés liés
+ *  40 BRIGID    : 4 bras + carré tissé central
+ *  41 CADUCEUS  : bâton + 2 serpents + barre
+ *  42 WEDJAT    : sourcil + boucle + spirale
+ *  43 SCARAB    : anneau + 6 pattes + suture
+ *  44 DJED      : bâton + 4 barres en tête
+ *  45 MONAS     : anneau + croix + croissant
+ *  46 ROSECROSS : croix latine + triangle central
+ *  47 ALCHEMY   : chaîne de triangles (éléments)
+ *  48 TAIJITU   : 2 anneaux + épine S + 2 yeux
+ *  49 HAMSA     : noyau 5 + 5 doigts + œil
+ *  50 NAZAR     : 3 anneaux + rayons
+ *  51 OM        : boucle + arc + croissant
+ *  52 CHAOSIGIL : graphe scellé par seed (n=16, intention -> glyphe)
  *
  * Design : les arêtes sont orientées (src -> dst). RING est un cycle orienté
  * (onde qui tourne) ; les autres motifs sont bidirectionnels (réverbération).
@@ -101,7 +120,27 @@
 #define SIGIL_VEVE 31       /* vèvè : carrefour (croix) + anneau + paires miroir */
 #define SIGIL_OGHAM 32      /* ogham : bâton + rameaux culs-de-sac (dissipation) */
 #define SIGIL_ADINKRA 33    /* nkyinkyim : ligne zigzag + torsades longues */
-#define SIGIL_NPATTERNS 34
+/* --- Codex étendu : runes indexées, staves islandais, panthéons --- */
+#define SIGIL_FUTHARK 34    /* 24 aînées + 16 jeunes (variant = seed%40) */
+#define SIGIL_GALDR 35      /* galdrastafir : 4 staves (variant = seed%4) */
+#define SIGIL_VALKNUT 36    /* 3 triangles + triangle central (nœud des tués) */
+#define SIGIL_MJOLNIR 37    /* marteau : manche + tête triangulaire */
+#define SIGIL_YGGDRASIL 38  /* frêne-monde : DAG acyclique (racines/tronc) */
+#define SIGIL_SHIELDKNOT 39 /* nœud bouclier : 4 anneaux carrés liés */
+#define SIGIL_BRIGID 40     /* croix de Brigid : 4 bras + carré tissé */
+#define SIGIL_CADUCEUS 41   /* caducée : bâton + 2 serpents + barre */
+#define SIGIL_WEDJAT 42     /* Œil d'Horus : sourcil + boucle + spirale */
+#define SIGIL_SCARAB 43     /* scarabée : anneau + 6 pattes + suture */
+#define SIGIL_DJED 44       /* pilier djed : bâton + 4 barres en tête */
+#define SIGIL_MONAS 45      /* Monas de Dee : anneau + croix + croissant */
+#define SIGIL_ROSECROSS 46  /* Rose-Croix : croix latine + triangle central */
+#define SIGIL_ALCHEMY 47    /* éléments : chaîne de triangles */
+#define SIGIL_TAIJITU 48    /* yin-yang : 2 anneaux + épine S + 2 yeux */
+#define SIGIL_HAMSA 49      /* main : noyau 5 + 5 doigts + œil */
+#define SIGIL_NAZAR 50      /* mauvais œil : 3 anneaux + rayons */
+#define SIGIL_OM 51         /* Om : boucle + arc + croissant (impression) */
+#define SIGIL_CHAOSIGIL 52  /* chaos : graphe scellé par seed (n=16) */
+#define SIGIL_NPATTERNS 53
 
 static const char *SIGIL_NAMES[SIGIL_NPATTERNS] = {
     "seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
@@ -109,7 +148,10 @@ static const char *SIGIL_NAMES[SIGIL_NPATTERNS] = {
     "sriyanta", "triskel", "vesica",
     "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune",
     "flower", "metatron", "iching", "bagua", "yetzirah", "labyrinth", "kolam",
-    "goetic", "enochian", "veve", "ogham", "adinkra"
+    "goetic", "enochian", "veve", "ogham", "adinkra",
+    "futhark", "galdr", "valknut", "mjolnir", "yggdrasil", "shieldknot",
+    "brigid", "caduceus", "wedjat", "scarab", "djed", "monas", "rosecross",
+    "alchemy", "taijitu", "hamsa", "nazar", "om", "chaosigil"
 };
 
 /** Taille canonique (0 = redimensionnable). */
@@ -120,6 +162,7 @@ int sigil_native_n(int pattern) {
         case SIGIL_ICHING: return 64;    /* 64 hexagrammes */
         case SIGIL_BAGUA: return 8;      /* 8 trigrammes */
         case SIGIL_YETZIRAH: return 22;  /* 22 lettres */
+        case SIGIL_CHAOSIGIL: return 16; /* sigil personnel : petit graphe */
         default: return 0;
     }
 }
@@ -140,6 +183,157 @@ static void push2(int32_t *src, int32_t *dst, int max_edges, int *m,
                   int32_t a, int32_t b) {
     push_edge(src, dst, max_edges, m, a, b);
     push_edge(src, dst, max_edges, m, b, a);
+}
+
+/* Indice sûr dans un bloc [b, b+m) : modulo (runes 1D : les côtés n'existent
+ * pas, seule la direction haut/bas survit — cf. FUTHARK). */
+static int32_t widx(int b, int off, int m) {
+    int r = off % m;
+    if (r < 0) r += m;
+    return (int32_t)(b + r);
+}
+
+/* Un glyphe runique dans le bloc [b, b+m) : bâton + traits canoniques.
+ * v = 0..23 aînées (Fehu..Othala), 24..39 jeunes (Fe..Yr).
+ * Projection 1D honnête : les côtés (gauche/droite) sont perdus, seules
+ * les directions haut/bas et les boucles survivent. Les codes quasi
+ * identiques mesurent une parenté morphologique réelle (ex. bol partagé
+ * raidho/berkano — le glyphe a survécu tel quel à travers les siècles).
+ * Convention : brindille HAUTE = arête vers l'avant (x->x+2),
+ * brindille BASSE = arête vers l'arrière ((x+2)->x). */
+static void rune_glyph(int v, int b, int m,
+                       int32_t *src, int32_t *dst, int max_edges, int *mm) {
+    int q1 = m / 4, q2 = m / 2, q3 = (3 * m) / 4, e = m - 1;
+    /* bâton (toutes sauf kenaz, gebo, jera, sowilo, ingwaz, sol) */
+    int nostave = (v == 5 || v == 6 || v == 11 || v == 15 || v == 21 || v == 34);
+    if (!nostave)
+        for (int i = 0; i < m - 1; ++i)
+            push_edge(src, dst, max_edges, mm, b + i, b + i + 1);
+    switch (v) {
+        case 0:  /* FEHU : 2 brindilles hautes */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q1+2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q2+2,m));
+            break;
+        case 1:  /* URUZ : diagonale de jonction haute */
+            push_edge(src, dst, max_edges, mm, b, widx(b,q2,m));
+            break;
+        case 2: case 26:  /* THURISAZ/THURS : triangle */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q1,m));
+            break;
+        case 3:  /* ANSUZ : 2 brindilles basses */
+            push_edge(src, dst, max_edges, mm, widx(b,q1+2,m), widx(b,q1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2+2,m), widx(b,q2,m));
+            break;
+        case 4:  /* RAIDHO : bol + jambe */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3,m));
+            break;
+        case 5:  /* KENAZ : angle < */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q2,m));
+            break;
+        case 6:  /* GEBO : X */
+            push_edge(src, dst, max_edges, mm, b, widx(b,e,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q1,m));
+            break;
+        case 7:  /* WUNJO : bol pointu */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q1+1,m));
+            break;
+        case 8:  /* HAGALAZ : parallèle + barre */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push2(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q3,m));
+            break;
+        case 9: case 31:  /* NAUTHIZ/NAUDR : X médian */
+            push_edge(src, dst, max_edges, mm, widx(b,q2-1,m), widx(b,q2+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2+1,m), widx(b,q2-1,m));
+            break;
+        case 10: case 32: /* ISA/ISS : bâton nu */
+            break;
+        case 11: /* JERA : deux chevrons convergents */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q2,m));
+            break;
+        case 12: /* EIHWAZ : zigzag */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q1+1,m));
+            break;
+        case 13: case 28: /* PERTHRO/REID : bol rond */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q1,m));
+            break;
+        case 14: case 39: /* ALGIZ/YR : paire haute (yr dérive d'algiz) */
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q2+2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2+1,m), widx(b,q2+3,m));
+            break;
+        case 15: /* SOWILO : éclair */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q2,m));
+            break;
+        case 16: case 35: /* TIWAZ/TYR : pointe de flèche */
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+2,m), widx(b,q1,m));
+            break;
+        case 17: case 36: /* BERKANO/BJARKAN : double bol */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q2,m));
+            break;
+        case 18: /* EHWAZ : diagonale longue */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q3,m));
+            break;
+        case 19: case 37: /* MANNAZ/MADR : X sommital */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q2,m));
+            break;
+        case 20: case 38: /* LAGUZ/LOGR : une brindille basse */
+            push_edge(src, dst, max_edges, mm, widx(b,q1+2,m), widx(b,q1,m));
+            break;
+        case 21: /* INGWAZ : losange (cycle de 4) */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q1+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q1,m));
+            break;
+        case 22: /* DAGAZ : nœud papillon (2-cycle long) */
+            push_edge(src, dst, max_edges, mm, b, widx(b,e,m));
+            push_edge(src, dst, max_edges, mm, widx(b,e,m), b);
+            break;
+        case 23: /* OTHALA : losange + jambes */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q3,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q1+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q3,m), widx(b,q3+1,m));
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q1+2,m));
+            break;
+        case 24: /* FE jeune : 1 brindille */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q1+2,m));
+            break;
+        case 25: /* UR jeune : crochet */
+            push_edge(src, dst, max_edges, mm, widx(b,q1+1,m), widx(b,q1,m));
+            break;
+        case 27: /* OSS jeune : brindille basse */
+            push_edge(src, dst, max_edges, mm, widx(b,q1+2,m), widx(b,q1,m));
+            break;
+        case 29: /* KAUN jeune : brindille haute courte */
+            push_edge(src, dst, max_edges, mm, widx(b,q2,m), widx(b,q2+2,m));
+            break;
+        case 30: /* HAGALL jeune : barre simple */
+            push2(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            break;
+        case 33: /* AR jeune : diagonale */
+            push_edge(src, dst, max_edges, mm, widx(b,q1,m), widx(b,q2,m));
+            break;
+        case 34: /* SOL jeune : slash */
+            push_edge(src, dst, max_edges, mm, b, widx(b,e,m));
+            break;
+        default: break;
+    }
 }
 
 /**
@@ -443,6 +637,251 @@ int sigil_edges(int pattern, int n, uint32_t seed,
             push_edge(src, dst, max_edges, &m, i, i + 1);
         for (int i = 0; i + 5 < n; ++i)      /* torsades longues (nkyinkyim) */
             push_edge(src, dst, max_edges, &m, i, i + 5);
+    } else if (pattern == SIGIL_FUTHARK) {
+        /* Inscription : k runes enchaînées (1..3 selon seed), rune j =
+         * (v0 + 7j) % 40 — v0 = seed%40 : 0..23 aînées, 24..39 jeunes. */
+        int v0 = (int)(seed % 40);
+        int k = 1 + (int)(seed % 3);
+        int base = 0;
+        for (int j = 0; j < k; ++j) {
+            int sz = (j < k - 1) ? (n / k) : (n - base);
+            if (sz >= 4)
+                rune_glyph((v0 + 7 * j) % 40, base, sz, src, dst, max_edges, &m);
+            else
+                for (int i = base; i < base + sz - 1; ++i)
+                    push_edge(src, dst, max_edges, &m, i, i + 1);
+            if (j < k - 1 && base + sz < n)  /* chaîne inter-runes */
+                push_edge(src, dst, max_edges, &m, base + sz - 1, base + sz);
+            base += sz;
+        }
+    } else if (pattern == SIGIL_GALDR) {
+        if (n < 16) return -1;
+        int g = (int)(seed % 4), L = n / 8;
+        if (g <= 1) {
+            /* ÆGISHJALMUR (0) : moyeu + 8 bras à barbelures ;
+             * VEGVISIR (1) : 8 bras + anneau des pointes. */
+            for (int a = 0; a < 8; ++a) {
+                int nb = 1 + a * L, ne = nb + L - 1;
+                if (ne >= n) ne = n - 1;
+                push_edge(src, dst, max_edges, &m, 0, nb);
+                for (int i = nb; i < ne; ++i)
+                    push_edge(src, dst, max_edges, &m, i, i + 1);
+                if (g == 0 && ne - 2 >= nb)  /* barbelure (T-tip) */
+                    push_edge(src, dst, max_edges, &m, ne, ne - 2);
+            }
+            if (g == 1) {                    /* anneau des pointes */
+                int tips[8], nt = 0;
+                for (int a = 0; a < 8; ++a) {
+                    int ne = 1 + a * L + L - 1;
+                    tips[nt++] = (ne < n) ? ne : (n - 1);
+                }
+                for (int a = 0; a < 8; ++a)
+                    push2(src, dst, max_edges, &m, tips[a], tips[(a + 1) % 8]);
+            }
+        } else {
+            /* GAPALDUR (2) : deux bâtons + barreaux ; GINFAXI (3) : + X. */
+            for (int i = 0; i + 2 < n; i += 2) {
+                push_edge(src, dst, max_edges, &m, i, i + 2);
+                push_edge(src, dst, max_edges, &m, i + 1, i + 3);
+            }
+            for (int i = 0; i + 3 < n; i += 4) {
+                if (g == 2) push2(src, dst, max_edges, &m, i, i + 1);
+                else {
+                    push_edge(src, dst, max_edges, &m, i, i + 3);
+                    push_edge(src, dst, max_edges, &m, i + 2, i + 1);
+                }
+            }
+        }
+    } else if (pattern == SIGIL_VALKNUT) {
+        if (n < 9) return -1;                /* 3 triangles + triangle central */
+        push2(src, dst, max_edges, &m, 0, n / 3);
+        push2(src, dst, max_edges, &m, n / 3, (2 * n) / 3);
+        push2(src, dst, max_edges, &m, (2 * n) / 3, 0);
+        int b[4]; b[0] = 3; b[1] = 3 + n / 3; b[2] = 3 + 2 * (n / 3); b[3] = n;
+        for (int r = 0; r < 3; ++r) {
+            int sz = b[r + 1] - b[r];
+            if (sz < 3) continue;
+            int st = sz / 3;
+            if (st < 1) st = 1;
+            for (int i = b[r]; i < b[r + 1]; ++i)
+                push2(src, dst, max_edges, &m, i, b[r] + ((i - b[r] + st) % sz));
+        }
+    } else if (pattern == SIGIL_MJOLNIR) {
+        int h = (3 * n) / 4;                 /* manche */
+        if (h < 2 || n - h < 3) return -1;
+        for (int i = 0; i < h - 1; ++i)
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        push_edge(src, dst, max_edges, &m, h - 1, h);  /* tête triangulaire */
+        push2(src, dst, max_edges, &m, h, h + 1);
+        push2(src, dst, max_edges, &m, h + 1, h + 2);
+        push2(src, dst, max_edges, &m, h + 2, h);
+        for (int i = h + 3; i < n; ++i)      /* garde éventuelle */
+            push_edge(src, dst, max_edges, &m, i - 1, i);
+    } else if (pattern == SIGIL_YGGDRASIL) {
+        /* DAG acyclique : 3 racines convergent, tronc, 3 cimes divergent.
+         * Premier motif sans aucun cycle : teste la mémoire purement
+         * feedforward (attendue ~0). */
+        int t0 = n / 3, t1 = (2 * n) / 3;
+        if (t0 < 2 || t1 - t0 < 2 || n - t1 < 2) return -1;
+        for (int a = 0; a < 3; ++a) {        /* racines -> base */
+            int rb = a * (t0 / 3), re = (a < 2) ? ((a + 1) * (t0 / 3)) : t0;
+            for (int i = rb; i < re - 1; ++i)
+                push_edge(src, dst, max_edges, &m, i, i + 1);
+            if (re - 1 >= rb) push_edge(src, dst, max_edges, &m, re - 1, t0);
+        }
+        for (int i = t0; i < t1 - 1; ++i)    /* tronc */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int a = 0; a < 3; ++a) {        /* cimes depuis le sommet */
+            int cb = t1 + a * ((n - t1) / 3), ce = (a < 2) ? (t1 + (a + 1) * ((n - t1) / 3)) : n;
+            if (cb < n) push_edge(src, dst, max_edges, &m, t1 - 1, cb);
+            for (int i = cb; i < ce - 1; ++i)
+                push_edge(src, dst, max_edges, &m, i, i + 1);
+        }
+    } else if (pattern == SIGIL_SHIELDKNOT) {
+        int q = n / 4;                       /* 4 anneaux carrés liés */
+        if (q < 2) return -1;
+        for (int r = 0; r < 4; ++r) {
+            int b0 = r * q, b1 = (r < 3) ? ((r + 1) * q) : n;
+            for (int i = b0; i < b1; ++i)
+                push2(src, dst, max_edges, &m, i, b0 + ((i - b0 + 1) % (b1 - b0)));
+            push2(src, dst, max_edges, &m, b1 - 1, b1 % n);  /* carré lié */
+        }
+    } else if (pattern == SIGIL_BRIGID) {
+        int L = n / 4;                       /* 4 bras + carré tissé */
+        if (L < 2) return -1;
+        int mid[4];
+        for (int a = 0; a < 4; ++a) {
+            int b0 = 1 + a * L, b1 = (a < 3) ? (1 + (a + 1) * L) : n;
+            push_edge(src, dst, max_edges, &m, 0, b0);
+            for (int i = b0; i < b1 - 1; ++i)
+                push_edge(src, dst, max_edges, &m, i, i + 1);
+            mid[a] = b0 + (b1 - b0) / 2;
+        }
+        for (int a = 0; a < 4; ++a)          /* le carré tissé central */
+            push2(src, dst, max_edges, &m, mid[a], mid[(a + 1) % 4]);
+    } else if (pattern == SIGIL_CADUCEUS) {
+        for (int i = 0; i < n - 1; ++i)      /* bâton */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int i = 0; i + 2 < n; i += 2) { /* serpents jumeaux */
+            push_edge(src, dst, max_edges, &m, i, i + 2);
+            push_edge(src, dst, max_edges, &m, i + 1, i + 3);
+        }
+        for (int i = 0; i + 3 < n; i += 3)   /* enlacements */
+            push2(src, dst, max_edges, &m, i, i + 3);
+        if (n > 4) push2(src, dst, max_edges, &m, n - 3, n - 1);  /* ailes */
+    } else if (pattern == SIGIL_WEDJAT) {
+        int t0 = n / 3, t1 = (2 * n) / 3;    /* sourcil / œil / spirale */
+        if (t0 < 2 || t1 - t0 < 3 || n - t1 < 2) return -1;
+        for (int i = 0; i < t0 - 1; ++i)     /* sourcil */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int i = t0; i < t1; ++i)        /* boucle de l'œil */
+            push2(src, dst, max_edges, &m, i, t0 + ((i - t0 + 1) % (t1 - t0)));
+        push_edge(src, dst, max_edges, &m, t0 - 1, t0);
+        for (int i = t1; i < n - 1; ++i)     /* spirale de la joue */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int i = t1; i + 3 < n; i += 4)
+            push_edge(src, dst, max_edges, &m, i + 3, i);
+    } else if (pattern == SIGIL_SCARAB) {
+        int r = (2 * n) / 3;                 /* corps en anneau */
+        if (r < 4 || n - r < 7) return -1;
+        for (int i = 0; i < r; ++i)
+            push2(src, dst, max_edges, &m, i, (i + 1) % r);
+        push2(src, dst, max_edges, &m, 0, r / 2);   /* suture des élytres */
+        for (int l = 0; l < 6; ++l) {        /* 6 pattes (culs-de-sac) */
+            int hip = (l * r) / 6, leg = r + l;
+            if (leg < n) push_edge(src, dst, max_edges, &m, hip, leg);
+        }
+        if (r + 6 < n)                       /* tête */
+            push_edge(src, dst, max_edges, &m, r / 4, r + 6);
+    } else if (pattern == SIGIL_DJED) {
+        for (int i = 0; i < n - 1; ++i)      /* pilier */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int h = 0; h < 4; ++h) {        /* 4 barres en tête */
+            int at = n - 2 - h * (n / 8);
+            if (at > n / 2 && at + 2 < n)
+                push_edge(src, dst, max_edges, &m, at, at + 2);
+        }
+    } else if (pattern == SIGIL_MONAS) {
+        int t0 = n / 3, t1 = (2 * n) / 3;    /* soleil + croix + croissant */
+        if (t0 < 2 || t1 - t0 < 3 || n - t1 < 2) return -1;
+        for (int i = t0; i < t1; ++i)        /* anneau solaire */
+            push2(src, dst, max_edges, &m, i, t0 + ((i - t0 + 1) % (t1 - t0)));
+        push2(src, dst, max_edges, &m, t0, t1 - 1);      /* croix */
+        push2(src, dst, max_edges, &m, (t0 + t1) / 2, 0);
+        for (int i = 0; i < t0 - 1; ++i)     /* croissant ouvert */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int i = t1; i < n - 1; ++i)     /* base */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        push_edge(src, dst, max_edges, &m, t0 - 1, t0);
+        push_edge(src, dst, max_edges, &m, t1 - 1, t1);
+    } else if (pattern == SIGIL_ROSECROSS) {
+        int c = n / 3;                       /* croix latine + rose */
+        for (int i = 0; i < n - 1; ++i)
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        if (c > 2 && c + 2 < n) {
+            push2(src, dst, max_edges, &m, c - 2, c + 2);  /* barre */
+            push_edge(src, dst, max_edges, &m, c - 1, c);  /* rose */
+            push_edge(src, dst, max_edges, &m, c, c + 1);
+            push_edge(src, dst, max_edges, &m, c + 1, c - 1);
+        }
+    } else if (pattern == SIGIL_ALCHEMY) {
+        int k = 0;                           /* chaîne de triangles */
+        for (; k + 2 < n; k += 2) {
+            push_edge(src, dst, max_edges, &m, k, k + 1);
+            push_edge(src, dst, max_edges, &m, k + 1, k + 2);
+            push_edge(src, dst, max_edges, &m, k + 2, k);
+        }
+        for (; k + 1 < n; ++k)
+            push_edge(src, dst, max_edges, &m, k, k + 1);
+    } else if (pattern == SIGIL_TAIJITU) {
+        int h = n / 2;                       /* 2 anneaux + épine S + yeux */
+        if (h < 3 || n - h < 3) return -1;
+        for (int i = 0; i < h; ++i)
+            push2(src, dst, max_edges, &m, i, (i + 1) % h);
+        for (int i = h; i < n; ++i)
+            push2(src, dst, max_edges, &m, i, h + ((i - h + 1) % (n - h)));
+        push_edge(src, dst, max_edges, &m, h - 1, h);      /* épine S */
+        push_edge(src, dst, max_edges, &m, n - 1, 0);
+        push_edge(src, dst, max_edges, &m, h / 2, h / 2 + 2);      /* yeux */
+        push_edge(src, dst, max_edges, &m, h + (n - h) / 2, h + (n - h) / 2 + 2);
+    } else if (pattern == SIGIL_HAMSA) {
+        for (int i = 0; i < 5; ++i)          /* paume : anneau de 5 */
+            push2(src, dst, max_edges, &m, i % 5, (i + 1) % 5);
+        push2(src, dst, max_edges, &m, 0, 2);              /* œil */
+        int per = (n - 5) / 5;               /* 5 doigts */
+        for (int f = 0; f < 5; ++f) {
+            int b0 = 5 + f * per, b1 = (f < 4) ? (5 + (f + 1) * per) : n;
+            if (b0 < n) push_edge(src, dst, max_edges, &m, f, b0);
+            for (int i = b0; i < b1 - 1; ++i)
+                push_edge(src, dst, max_edges, &m, i, i + 1);
+        }
+    } else if (pattern == SIGIL_NAZAR) {
+        int s0 = n / 3, s1 = n / 3, s2 = n - s0 - s1;  /* 3 anneaux */
+        if (s0 < 2 || s1 < 2 || s2 < 2) return -1;
+        int b[4]; b[0] = 0; b[1] = s0; b[2] = s0 + s1; b[3] = n;
+        for (int r = 0; r < 3; ++r)
+            for (int i = b[r]; i < b[r + 1]; ++i)
+                push2(src, dst, max_edges, &m, i, b[r] + ((i - b[r] + 1) % (b[r + 1] - b[r])));
+        for (int i = 0; i < s0; ++i)         /* rayons */
+            push2(src, dst, max_edges, &m, b[0] + i, b[1] + (i % s1));
+    } else if (pattern == SIGIL_OM) {
+        int h = n / 2;                       /* boucle + arc + croissant */
+        if (h < 3 || n - h < 2) return -1;
+        for (int i = 0; i < h; ++i)
+            push2(src, dst, max_edges, &m, i, (i + 1) % h);
+        for (int i = h; i < n - 1; ++i)
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        push_edge(src, dst, max_edges, &m, h - 1, h);
+        if (n - h > 3)
+            push_edge(src, dst, max_edges, &m, n - 1, h + 1);  /* croissant */
+    } else if (pattern == SIGIL_CHAOSIGIL) {
+        if (n != 16) return -1;              /* sigil personnel scellé */
+        int target = (5 * n) / 2, guard = 0;
+        while (m < target && guard++ < target * 20) {
+            int32_t a = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            push_edge(src, dst, max_edges, &m, a, b);
+        }
     } else {
         return -1;
     }
@@ -514,6 +953,16 @@ int main(void) {
         if (m != 384) { printf("FAIL iching m=%d (attendu 384)\n", m); fails++; }
         m = sigil_edges(SIGIL_BAGUA, 8, 1, src, dst, 8 * 128);
         if (m != 24) { printf("FAIL bagua m=%d (attendu 24)\n", m); fails++; }
+        /* Futhark : les 40 runes (24 + 16) génèrent toutes quelque chose */
+        for (int v = 0; v < 40; ++v) {
+            m = sigil_edges(SIGIL_FUTHARK, 64, (uint32_t)v, src, dst, 8 * 128);
+            if (m <= 0) { printf("FAIL futhark v=%d\n", v); fails++; }
+        }
+        /* Galdrastafir : les 4 staves */
+        for (int g = 0; g < 4; ++g) {
+            m = sigil_edges(SIGIL_GALDR, 64, (uint32_t)g, src, dst, 8 * 128);
+            if (m <= 0) { printf("FAIL galdr g=%d\n", g); fails++; }
+        }
         if (sigil_edges(99, 64, 1, src, dst, 8 * 128) != -1) { printf("FAIL bad pattern\n"); fails++; }
         if (sigil_edges(0, 2, 1, src, dst, 8 * 128) != -1) { printf("FAIL small n\n"); fails++; }
     }

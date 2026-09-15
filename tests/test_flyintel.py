@@ -167,6 +167,13 @@ def test_sigil():
     i_src, _ = circ.edges(24, 64)
     assert len(i_src) == 384, len(i_src)         # Q6 : 64*6/2 x2
     assert circ.native_n(23) == 13               # Métatron : 13 cercles
+    assert circ.native_n(52) == 16               # Chaosigil : petit graphe
+    y_src, _ = circ.edges(38, 64)                # Yggdrasil : DAG
+    assert len(y_src) > 0
+    f_src, _ = circ.edges(34, 64, seed=5)        # Futhark : inscription
+    assert len(f_src) > 0
+    g_src, _ = circ.edges(35, 64, seed=1)        # Vegvisir
+    assert len(g_src) > 0
     W, m = build_W(circ, 0, 32)
     rate, burst, dom, MC = run_and_measure(circ, W, T=300)
     assert 0.0 < rate < 0.5, rate

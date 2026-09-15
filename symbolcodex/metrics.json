@@ -1,0 +1,532 @@
+{
+ "seal": {
+  "id": 0,
+  "n": 64,
+  "edges": 216,
+  "kpas": 23.5,
+  "rate": 0.0154,
+  "burst": 20.56,
+  "domHz": 0.2967,
+  "MC": 0.157
+ },
+ "pentagram": {
+  "id": 1,
+  "n": 64,
+  "edges": 192,
+  "kpas": 20.7,
+  "rate": 0.0153,
+  "burst": 18.42,
+  "domHz": 0.2967,
+  "MC": 0.202
+ },
+ "ring": {
+  "id": 2,
+  "n": 64,
+  "edges": 64,
+  "kpas": 19.3,
+  "rate": 0.0153,
+  "burst": 20.58,
+  "domHz": 0.353,
+  "MC": 0.1
+ },
+ "wheel": {
+  "id": 3,
+  "n": 64,
+  "edges": 254,
+  "kpas": 19.4,
+  "rate": 0.0155,
+  "burst": 17.83,
+  "domHz": 0.0527,
+  "MC": 0.175
+ },
+ "grid": {
+  "id": 4,
+  "n": 64,
+  "edges": 256,
+  "kpas": 18.7,
+  "rate": 0.0156,
+  "burst": 18.9,
+  "domHz": 0.0527,
+  "MC": 0.22
+ },
+ "ziggurat": {
+  "id": 5,
+  "n": 64,
+  "edges": 224,
+  "kpas": 21.5,
+  "rate": 0.0156,
+  "burst": 17.33,
+  "domHz": 0.0527,
+  "MC": 0.204
+ },
+ "random": {
+  "id": 6,
+  "n": 64,
+  "edges": 192,
+  "kpas": 22.6,
+  "rate": 0.015,
+  "burst": 24.25,
+  "domHz": 0.2967,
+  "MC": 0.057
+ },
+ "hexagram": {
+  "id": 7,
+  "n": 64,
+  "edges": 192,
+  "kpas": 18.3,
+  "rate": 0.0155,
+  "burst": 18.92,
+  "domHz": 0.2967,
+  "MC": 0.168
+ },
+ "pentacle": {
+  "id": 8,
+  "n": 64,
+  "edges": 256,
+  "kpas": 19.2,
+  "rate": 0.0154,
+  "burst": 20.39,
+  "domHz": 0.4443,
+  "MC": 0.141
+ },
+ "tree": {
+  "id": 9,
+  "n": 10,
+  "edges": 44,
+  "kpas": 22.9,
+  "rate": 0.0178,
+  "burst": 4.12,
+  "domHz": 0.488,
+  "MC": 0.054
+ },
+ "ouroboros": {
+  "id": 10,
+  "n": 64,
+  "edges": 65,
+  "kpas": 21.6,
+  "rate": 0.0153,
+  "burst": 20.59,
+  "domHz": 0.353,
+  "MC": 0.099
+ },
+ "triquetra": {
+  "id": 11,
+  "n": 64,
+  "edges": 134,
+  "kpas": 20.5,
+  "rate": 0.0153,
+  "burst": 20.7,
+  "domHz": 0.2967,
+  "MC": 0.127
+ },
+ "ankh": {
+  "id": 12,
+  "n": 64,
+  "edges": 108,
+  "kpas": 18.0,
+  "rate": 0.0153,
+  "burst": 20.22,
+  "domHz": 0.2967,
+  "MC": 0.141
+ },
+ "sriyanta": {
+  "id": 13,
+  "n": 64,
+  "edges": 212,
+  "kpas": 20.7,
+  "rate": 0.0154,
+  "burst": 18.14,
+  "domHz": 0.0527,
+  "MC": 0.195
+ },
+ "triskel": {
+  "id": 14,
+  "n": 64,
+  "edges": 66,
+  "kpas": 11.6,
+  "rate": 0.0154,
+  "burst": 20.47,
+  "domHz": 0.2727,
+  "MC": 0.092
+ },
+ "vesica": {
+  "id": 15,
+  "n": 64,
+  "edges": 132,
+  "kpas": 13.6,
+  "rate": 0.0154,
+  "burst": 20.12,
+  "domHz": 0.0527,
+  "MC": 0.1
+ },
+ "isa": {
+  "id": 16,
+  "n": 64,
+  "edges": 63,
+  "kpas": 12.0,
+  "rate": 0.0152,
+  "burst": 22.4,
+  "domHz": 0.2967,
+  "MC": 0.078
+ },
+ "fehu": {
+  "id": 17,
+  "n": 64,
+  "edges": 84,
+  "kpas": 8.1,
+  "rate": 0.0152,
+  "burst": 21.0,
+  "domHz": 0.2967,
+  "MC": 0.117
+ },
+ "algiz": {
+  "id": 18,
+  "n": 64,
+  "edges": 79,
+  "kpas": 10.7,
+  "rate": 0.0156,
+  "burst": 18.87,
+  "domHz": 0.2727,
+  "MC": 0.102
+ },
+ "hagalaz": {
+  "id": 19,
+  "n": 64,
+  "edges": 126,
+  "kpas": 9.2,
+  "rate": 0.0156,
+  "burst": 17.72,
+  "domHz": 0.097,
+  "MC": 0.117
+ },
+ "othala": {
+  "id": 20,
+  "n": 64,
+  "edges": 168,
+  "kpas": 12.4,
+  "rate": 0.0155,
+  "burst": 19.23,
+  "domHz": 0.2967,
+  "MC": 0.137
+ },
+ "bindrune": {
+  "id": 21,
+  "n": 64,
+  "edges": 71,
+  "kpas": 14.0,
+  "rate": 0.0153,
+  "burst": 20.68,
+  "domHz": 0.2727,
+  "MC": 0.104
+ },
+ "flower": {
+  "id": 22,
+  "n": 64,
+  "edges": 768,
+  "kpas": 13.1,
+  "rate": 0.0155,
+  "burst": 17.32,
+  "domHz": 0.0527,
+  "MC": 0.264
+ },
+ "metatron": {
+  "id": 23,
+  "n": 13,
+  "edges": 156,
+  "kpas": 16.0,
+  "rate": 0.0164,
+  "burst": 4.95,
+  "domHz": 0.488,
+  "MC": 0.061
+ },
+ "iching": {
+  "id": 24,
+  "n": 64,
+  "edges": 384,
+  "kpas": 22.1,
+  "rate": 0.0157,
+  "burst": 20.28,
+  "domHz": 0.0527,
+  "MC": 0.195
+ },
+ "bagua": {
+  "id": 25,
+  "n": 8,
+  "edges": 24,
+  "kpas": 23.9,
+  "rate": 0.0227,
+  "burst": 4.06,
+  "domHz": 0.0527,
+  "MC": 0.061
+ },
+ "yetzirah": {
+  "id": 26,
+  "n": 22,
+  "edges": 462,
+  "kpas": 22.1,
+  "rate": 0.0145,
+  "burst": 7.2,
+  "domHz": 0.488,
+  "MC": 0.078
+ },
+ "labyrinth": {
+  "id": 27,
+  "n": 64,
+  "edges": 63,
+  "kpas": 20.5,
+  "rate": 0.0152,
+  "burst": 22.19,
+  "domHz": 0.2967,
+  "MC": 0.071
+ },
+ "kolam": {
+  "id": 28,
+  "n": 64,
+  "edges": 512,
+  "kpas": 17.5,
+  "rate": 0.0155,
+  "burst": 21.64,
+  "domHz": 0.1063,
+  "MC": 0.185
+ },
+ "goetic": {
+  "id": 29,
+  "n": 64,
+  "edges": 80,
+  "kpas": 19.9,
+  "rate": 0.0152,
+  "burst": 20.13,
+  "domHz": 0.0527,
+  "MC": 0.122
+ },
+ "enochian": {
+  "id": 30,
+  "n": 64,
+  "edges": 382,
+  "kpas": 8.8,
+  "rate": 0.0155,
+  "burst": 19.08,
+  "domHz": 0.488,
+  "MC": 0.172
+ },
+ "veve": {
+  "id": 31,
+  "n": 64,
+  "edges": 196,
+  "kpas": 9.4,
+  "rate": 0.0155,
+  "burst": 19.35,
+  "domHz": 0.2967,
+  "MC": 0.174
+ },
+ "ogham": {
+  "id": 32,
+  "n": 64,
+  "edges": 63,
+  "kpas": 7.8,
+  "rate": 0.0152,
+  "burst": 22.15,
+  "domHz": 0.2967,
+  "MC": 0.078
+ },
+ "adinkra": {
+  "id": 33,
+  "n": 64,
+  "edges": 122,
+  "kpas": 7.2,
+  "rate": 0.0153,
+  "burst": 19.6,
+  "domHz": 0.0527,
+  "MC": 0.148
+ },
+ "futhark": {
+  "id": 34,
+  "n": 64,
+  "edges": 34,
+  "kpas": 13.9,
+  "rate": 0.0151,
+  "burst": 23.83,
+  "domHz": 0.4443,
+  "MC": 0.065
+ },
+ "galdr": {
+  "id": 35,
+  "n": 64,
+  "edges": 94,
+  "kpas": 19.1,
+  "rate": 0.0155,
+  "burst": 17.71,
+  "domHz": 0.0527,
+  "MC": 0.121
+ },
+ "valknut": {
+  "id": 36,
+  "n": 64,
+  "edges": 128,
+  "kpas": 19.5,
+  "rate": 0.0153,
+  "burst": 21.33,
+  "domHz": 0.2967,
+  "MC": 0.097
+ },
+ "mjolnir": {
+  "id": 37,
+  "n": 64,
+  "edges": 67,
+  "kpas": 20.9,
+  "rate": 0.0153,
+  "burst": 20.58,
+  "domHz": 0.353,
+  "MC": 0.1
+ },
+ "yggdrasil": {
+  "id": 38,
+  "n": 64,
+  "edges": 63,
+  "kpas": 21.3,
+  "rate": 0.0152,
+  "burst": 22.17,
+  "domHz": 0.2967,
+  "MC": 0.078
+ },
+ "shieldknot": {
+  "id": 39,
+  "n": 64,
+  "edges": 136,
+  "kpas": 19.8,
+  "rate": 0.0153,
+  "burst": 20.62,
+  "domHz": 0.2967,
+  "MC": 0.099
+ },
+ "brigid": {
+  "id": 40,
+  "n": 64,
+  "edges": 71,
+  "kpas": 21.8,
+  "rate": 0.0153,
+  "burst": 18.7,
+  "domHz": 0.0527,
+  "MC": 0.132
+ },
+ "caduceus": {
+  "id": 41,
+  "n": 64,
+  "edges": 169,
+  "kpas": 19.8,
+  "rate": 0.0154,
+  "burst": 18.24,
+  "domHz": 0.2967,
+  "MC": 0.19
+ },
+ "wedjat": {
+  "id": 42,
+  "n": 64,
+  "edges": 89,
+  "kpas": 21.3,
+  "rate": 0.0153,
+  "burst": 20.49,
+  "domHz": 0.0527,
+  "MC": 0.107
+ },
+ "scarab": {
+  "id": 43,
+  "n": 64,
+  "edges": 93,
+  "kpas": 20.2,
+  "rate": 0.0152,
+  "burst": 19.97,
+  "domHz": 0.2967,
+  "MC": 0.137
+ },
+ "djed": {
+  "id": 44,
+  "n": 64,
+  "edges": 66,
+  "kpas": 20.1,
+  "rate": 0.0152,
+  "burst": 21.65,
+  "domHz": 0.2967,
+  "MC": 0.103
+ },
+ "monas": {
+  "id": 45,
+  "n": 64,
+  "edges": 89,
+  "kpas": 20.2,
+  "rate": 0.0153,
+  "burst": 20.4,
+  "domHz": 0.0527,
+  "MC": 0.135
+ },
+ "rosecross": {
+  "id": 46,
+  "n": 64,
+  "edges": 68,
+  "kpas": 18.1,
+  "rate": 0.0152,
+  "burst": 21.13,
+  "domHz": 0.353,
+  "MC": 0.091
+ },
+ "alchemy": {
+  "id": 47,
+  "n": 64,
+  "edges": 94,
+  "kpas": 19.5,
+  "rate": 0.0156,
+  "burst": 18.75,
+  "domHz": 0.0527,
+  "MC": 0.115
+ },
+ "taijitu": {
+  "id": 48,
+  "n": 64,
+  "edges": 132,
+  "kpas": 20.9,
+  "rate": 0.0153,
+  "burst": 19.89,
+  "domHz": 0.0527,
+  "MC": 0.126
+ },
+ "hamsa": {
+  "id": 49,
+  "n": 64,
+  "edges": 71,
+  "kpas": 23.9,
+  "rate": 0.0152,
+  "burst": 20.69,
+  "domHz": 0.2967,
+  "MC": 0.14
+ },
+ "nazar": {
+  "id": 50,
+  "n": 64,
+  "edges": 170,
+  "kpas": 21.7,
+  "rate": 0.0154,
+  "burst": 19.84,
+  "domHz": 0.2967,
+  "MC": 0.14
+ },
+ "om": {
+  "id": 51,
+  "n": 64,
+  "edges": 97,
+  "kpas": 24.2,
+  "rate": 0.0152,
+  "burst": 20.58,
+  "domHz": 0.0527,
+  "MC": 0.113
+ },
+ "chaosigil": {
+  "id": 52,
+  "n": 16,
+  "edges": 40,
+  "kpas": 26.2,
+  "rate": 0.0151,
+  "burst": 6.2,
+  "domHz": 0.2967,
+  "MC": 0.044
+ }
+}
