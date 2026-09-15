@@ -258,6 +258,23 @@ def test_htc():
     print("ok test_htc")
 
 
+def test_collatz_fib():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    from collatz_fib import scan, theorem1, theorem2, spectral, T
+    assert T(1) == 2 and T(2) == 1 and T(5) == 10 and T(10) == 5
+    basins, cycles, trans, ms, nonterm = scan(3000)
+    assert sorted(cycles) == [(1, 2), (5, 10)], cycles  # découverts, non supposés
+    assert not nonterm
+    c = sum(1 for b in basins[:2000] if set(b) == {5, 10}) / 2000
+    assert abs(c - 0.948) < 0.01, c  # 94,8 % du papier
+    assert theorem1(500) == 500
+    assert theorem2(2000) == 4000
+    _, lam = spectral(trans)
+    assert abs(lam - 0.8774) < 0.02, lam
+    print("ok test_collatz_fib")
+
+
 def test_websearch():
     import requests as _rq
     from flyintel import websearch
@@ -290,6 +307,7 @@ if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
                test_benchmark_smoke, test_metaphor_stub, test_sigil,
-               test_usecases, test_ie_worlds, test_memory_loop, test_htc, test_websearch]:
+               test_usecases, test_ie_worlds, test_memory_loop, test_htc,
+               test_collatz_fib, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")
