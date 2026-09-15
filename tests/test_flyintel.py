@@ -157,6 +157,10 @@ def test_sigil():
     r_src, _ = circ.edges(2, 64)   # ring
     assert len(r_src) == 64, len(r_src)          # cycle exact
     assert len(s_src) > len(r_src)               # sceau plus riche que l'anneau
+    assert circ.native_n(9) == 10                # Arbre de Vie : taille canonique
+    t_src, _ = circ.edges(9, 10)
+    assert len(t_src) == 44, len(t_src)          # 22 sentiers x2
+    assert circ.native_n(0) == 0                 # motifs redimensionnables
     W, m = build_W(circ, 0, 32)
     rate, burst, dom, MC = run_and_measure(circ, W, T=300)
     assert 0.0 < rate < 0.5, rate

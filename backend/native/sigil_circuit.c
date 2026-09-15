@@ -15,6 +15,22 @@
  *   4 GRID      : grille torique (tablettes, carrés magiques)
  *   5 ZIGGURAT  : 4 couches feedforward + anneaux intra-couche (layer map)
  *   6 RANDOM    : contrôle Erdős–Rényi, même budget d'arêtes (témoin)
+ *   7 HEXAGRAM  : Sceau de Salomon : deux triangles entrelacés (cordes n/3)
+ *   8 PENTACLE  : cercle + étoile (anneau bidir + cordes d'étoile)
+ *   9 TREE      : Arbre de Vie kabbalistique : 10 sephiroth + 22 sentiers
+ *                 (taille canonique n=10, cf. sigil_native_n)
+ *  10 OUROBOROS : cycle + corde de feedback lointaine (tête qui mord)
+ *  11 TRIQUETRA : trois anneaux liés en triangle (celtique)
+ *  12 ANKH      : anneau + barre diamétrale + queue (croix de vie)
+ *  13 SRIYANTA  : 3 anneaux triangulaires + rayons inter-couches
+ *  14 TRISKEL   : moyeu + 3 bras récurrents (celtique)
+ *  15 VESICA    : deux anneaux partageant 2 nœuds (vesica piscis)
+ *  16 ISA       : ligne ouverte orientée (rune : delay line pure)
+ *  17 FEHU      : ligne + brindilles i->i+2 (richesse qui rejoint)
+ *  18 ALGIZ     : ligne + feedbacks locaux (protection, rune de vie)
+ *  19 HAGALAZ   : échelle : deux lignes + barreaux (grêle, H répété)
+ *  20 OTHALA    : chaîne de losanges (héritage, rhombus tiling)
+ *  21 BINDRUNE  : ligne + 8 cordes scellées par seed (rune liée)
  *
  * Design : les arêtes sont orientées (src -> dst). RING est un cycle orienté
  * (onde qui tourne) ; les autres motifs sont bidirectionnels (réverbération).
@@ -42,11 +58,36 @@
 #define SIGIL_GRID 4
 #define SIGIL_ZIGGURAT 5
 #define SIGIL_RANDOM 6
-#define SIGIL_NPATTERNS 7
+/* --- Sceaux sacrés : Kabbale, Salomon, Égypte, Celtes, Inde --- */
+#define SIGIL_HEXAGRAM 7    /* Sceau de Salomon : deux triangles entrelacés */
+#define SIGIL_PENTACLE 8    /* cercle + étoile (anneau bidir + cordes) */
+#define SIGIL_TREE 9        /* Arbre de Vie : 10 sephiroth + 22 sentiers (n=10) */
+#define SIGIL_OUROBOROS 10  /* serpent qui se mord : cycle + feedback lointain */
+#define SIGIL_TRIQUETRA 11  /* trois anneaux en triangle (celtique) */
+#define SIGIL_ANKH 12       /* anneau + barre + queue (croix de vie) */
+#define SIGIL_SRIYANTA 13   /* 3 anneaux triangulaires + rayons (Sri Yantra) */
+#define SIGIL_TRISKEL 14    /* moyeu + 3 bras récurrents (celtique) */
+#define SIGIL_VESICA 15     /* deux anneaux partageant 2 nœuds (vesica piscis) */
+/* --- Runes nordiques : famille morphologique (lignes, branches, échelles) --- */
+#define SIGIL_ISA 16        /* ligne ouverte (delay line, sans bouclage) */
+#define SIGIL_FEHU 17       /* ligne + brindilles qui rejoignent (i->i+2) */
+#define SIGIL_ALGIZ 18      /* ligne + feedbacks locaux (branches de vie) */
+#define SIGIL_HAGALAZ 19    /* échelle : 2 lignes + barreaux (H répété) */
+#define SIGIL_OTHALA 20     /* chaîne de losanges (rhombus tiling) */
+#define SIGIL_BINDRUNE 21   /* rune liée : ligne + 8 cordes scellées (seed) */
+#define SIGIL_NPATTERNS 22
 
 static const char *SIGIL_NAMES[SIGIL_NPATTERNS] = {
-    "seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random"
+    "seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
+    "hexagram", "pentacle", "tree", "ouroboros", "triquetra", "ankh",
+    "sriyanta", "triskel", "vesica",
+    "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune"
 };
+
+/** Taille canonique (0 = redimensionnable). L'Arbre de Vie est fixe : 10. */
+int sigil_native_n(int pattern) {
+    return (pattern == SIGIL_TREE) ? 10 : 0;
+}
 
 static uint32_t lcg_next(uint32_t *s) {
     *s = *s * 1664525u + 1013904223u;
@@ -135,6 +176,133 @@ int sigil_edges(int pattern, int n, uint32_t seed,
             int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
             push_edge(src, dst, max_edges, &m, a, b);
         }
+    } else if (pattern == SIGIL_HEXAGRAM) {
+        int k = n / 3;                       /* deux triangles entrelacés */
+        if (k < 2) k = 2;
+        for (int i = 0; i < n; ++i) {
+            push_edge(src, dst, max_edges, &m, i, (i + 1) % n);
+            push2(src, dst, max_edges, &m, i, (i + k) % n);
+        }
+    } else if (pattern == SIGIL_PENTACLE) {
+        int k = n / 2 - 1;                   /* cercle + étoile */
+        if (k < 2) k = 2;
+        for (int i = 0; i < n; ++i) {
+            push2(src, dst, max_edges, &m, i, (i + 1) % n);
+            push2(src, dst, max_edges, &m, i, (i + k) % n);
+        }
+    } else if (pattern == SIGIL_TREE) {
+        /* Arbre de Vie (Kircher) : Kether 0, Chokhmah 1, Binah 2, Chesed 3,
+         * Geburah 4, Tiphereth 5, Netzach 6, Hod 7, Yesod 8, Malkuth 9.
+         * 22 sentiers (lettres hébraïques) — taille canonique. */
+        static const int8_t P[22][2] = {
+            {0,1},{0,2},{0,5},{1,2},{1,5},{1,3},{2,5},{2,4},
+            {3,4},{3,5},{3,6},{4,5},{4,7},{5,6},{5,8},{5,7},
+            {6,7},{6,8},{6,9},{7,8},{7,9},{8,9}
+        };
+        if (n != 10) return -1;
+        for (int k = 0; k < 22; ++k)
+            push2(src, dst, max_edges, &m, P[k][0], P[k][1]);
+    } else if (pattern == SIGIL_OUROBOROS) {
+        for (int i = 0; i < n; ++i)          /* le corps */
+            push_edge(src, dst, max_edges, &m, i, (i + 1) % n);
+        push_edge(src, dst, max_edges, &m, n - 1, n / 3);  /* la morsure */
+    } else if (pattern == SIGIL_TRIQUETRA) {
+        int s0 = n / 3, s1 = n / 3, s2 = n - s0 - s1;
+        if (s0 < 2 || s1 < 2 || s2 < 2) return -1;
+        int b[4]; b[0] = 0; b[1] = s0; b[2] = s0 + s1; b[3] = n;
+        for (int r = 0; r < 3; ++r)
+            for (int i = b[r]; i < b[r + 1]; ++i)
+                push2(src, dst, max_edges, &m, i, b[r] + ((i - b[r] + 1) % (b[r + 1] - b[r])));
+        for (int r = 0; r < 3; ++r)          /* les trois boucles se tiennent */
+            push2(src, dst, max_edges, &m, b[r + 1] - 1, b[(r + 1) % 3]);
+    } else if (pattern == SIGIL_ANKH) {
+        int r = (2 * n) / 3;                 /* l'anneau de vie */
+        if (r < 4 || n - r < 1) return -1;
+        for (int i = 0; i < r; ++i)
+            push2(src, dst, max_edges, &m, i, (i + 1) % r);
+        push2(src, dst, max_edges, &m, 0, r / 2);   /* la barre */
+        push_edge(src, dst, max_edges, &m, r / 2, r);/* la queue */
+        for (int i = r; i < n - 1; ++i)
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+    } else if (pattern == SIGIL_SRIYANTA) {
+        int s0 = n / 3, s1 = n / 3, s2 = n - s0 - s1;
+        if (s0 < 4 || s1 < 4 || s2 < 4) return -1;
+        int b[4]; b[0] = 0; b[1] = s0; b[2] = s0 + s1; b[3] = n;
+        int sz[3] = {s0, s1, s2};
+        for (int L = 0; L < 3; ++L) {        /* triangles entrelacés */
+            int st = sz[L] / 3;
+            if (st < 1) st = 1;
+            for (int i = b[L]; i < b[L + 1]; ++i)
+                push2(src, dst, max_edges, &m, i, b[L] + ((i - b[L] + st) % sz[L]));
+        }
+        for (int i = 0; i < s0; ++i) {       /* rayons inter-couches */
+            push2(src, dst, max_edges, &m, b[0] + i, b[1] + (i % s1));
+            push2(src, dst, max_edges, &m, b[1] + (i % s1), b[2] + (i % s2));
+        }
+    } else if (pattern == SIGIL_TRISKEL) {
+        int per = (n - 1) / 3;               /* 3 bras + moyeu 0 */
+        if (per < 1) return -1;
+        int base = 1;
+        for (int a = 0; a < 3; ++a) {
+            int len = (a < 2) ? per : (n - base);  /* le reste au 3e bras */
+            if (len < 1) break;
+            push_edge(src, dst, max_edges, &m, 0, base);
+            for (int i = 0; i < len - 1; ++i)
+                push_edge(src, dst, max_edges, &m, base + i, base + i + 1);
+            push_edge(src, dst, max_edges, &m, base + len - 1, 0); /* retour */
+            base += len;
+        }
+    } else if (pattern == SIGIL_VESICA) {
+        int na = n / 2;                      /* deux anneaux, 2 nœuds communs */
+        if (na < 3 || n - na < 2) return -1;
+        for (int i = 0; i < na; ++i)         /* anneau A : 0..na-1 */
+            push2(src, dst, max_edges, &m, i, (i + 1) % na);
+        /* anneau B : 0, 1, na, na+1, ..., n-1, retour à 0 */
+        push2(src, dst, max_edges, &m, 0, 1);
+        push2(src, dst, max_edges, &m, 1, na);
+        for (int i = na; i < n - 1; ++i)
+            push2(src, dst, max_edges, &m, i, i + 1);
+        push2(src, dst, max_edges, &m, n - 1, 0);
+    } else if (pattern == SIGIL_ISA) {
+        for (int i = 0; i < n - 1; ++i)      /* bâton ouvert, sans bouclage */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+    } else if (pattern == SIGIL_FEHU) {
+        for (int i = 0; i < n - 1; ++i) {
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+            if (i % 3 == 0 && i + 2 < n)     /* brindilles qui rejoignent */
+                push_edge(src, dst, max_edges, &m, i, i + 2);
+        }
+    } else if (pattern == SIGIL_ALGIZ) {
+        for (int i = 0; i < n - 1; ++i) {
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+            if (i % 4 == 0 && i + 3 < n)     /* branches de vie en feedback */
+                push_edge(src, dst, max_edges, &m, i + 3, i);
+        }
+    } else if (pattern == SIGIL_HAGALAZ) {
+        for (int i = 0; i + 2 < n; i += 2) { /* deux montants */
+            push_edge(src, dst, max_edges, &m, i, i + 2);
+            push_edge(src, dst, max_edges, &m, i + 1, i + 3);
+        }
+        for (int i = 0; i + 1 < n; i += 2)   /* barreaux */
+            push2(src, dst, max_edges, &m, i, i + 1);
+    } else if (pattern == SIGIL_OTHALA) {
+        int k = 0;                           /* chaîne de losanges */
+        for (; k + 3 < n; k += 3) {
+            push2(src, dst, max_edges, &m, k, k + 1);
+            push2(src, dst, max_edges, &m, k, k + 2);
+            push2(src, dst, max_edges, &m, k + 1, k + 3);
+            push2(src, dst, max_edges, &m, k + 2, k + 3);
+        }
+        for (; k + 1 < n; ++k)               /* queue éventuelle */
+            push_edge(src, dst, max_edges, &m, k, k + 1);
+    } else if (pattern == SIGIL_BINDRUNE) {
+        for (int i = 0; i < n - 1; ++i)      /* bâton porteur */
+            push_edge(src, dst, max_edges, &m, i, i + 1);
+        for (int c = 0; c < 8; ++c) {        /* 8 runes scellées (seed) */
+            int32_t a = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            int32_t b = (int32_t)(lcg_next(&rng) % (uint32_t)n);
+            push_edge(src, dst, max_edges, &m, a, b);
+        }
     } else {
         return -1;
     }
@@ -185,14 +353,18 @@ int main(void) {
         m = sigil_edges(SIGIL_SEAL, 64, 1, src, dst, 8 * 128);
         if (m <= 0) { printf("FAIL seal\n"); fails++; }
         for (int p = 0; p < SIGIL_NPATTERNS; ++p) {
-            m = sigil_edges(p, 64, 1234, src, dst, 8 * 128);
-            if (m <= 0) { printf("FAIL pattern %d\n", p); fails++; continue; }
+            int nn = sigil_native_n(p) ? sigil_native_n(p) : 64;
+            m = sigil_edges(p, nn, 1234, src, dst, 8 * 128);
+            if (m <= 0) { printf("FAIL pattern %d (%s)\n", p, SIGIL_NAMES[p]); fails++; continue; }
             for (int k = 0; k < m; ++k)
-                if (src[k] < 0 || src[k] >= 64 || dst[k] < 0 || dst[k] >= 64 ||
+                if (src[k] < 0 || src[k] >= nn || dst[k] < 0 || dst[k] >= nn ||
                     src[k] == dst[k]) {
                     printf("FAIL pattern %d edge %d\n", p, k); fails++; break;
                 }
         }
+        /* Arbre de Vie : exactement 22 sentiers x2 = 44 arêtes */
+        m = sigil_edges(SIGIL_TREE, 10, 1, src, dst, 8 * 128);
+        if (m != 44) { printf("FAIL tree m=%d (attendu 44)\n", m); fails++; }
         if (sigil_edges(99, 64, 1, src, dst, 8 * 128) != -1) { printf("FAIL bad pattern\n"); fails++; }
         if (sigil_edges(0, 2, 1, src, dst, 8 * 128) != -1) { printf("FAIL small n\n"); fails++; }
     }

@@ -20,7 +20,10 @@ import numpy as np
 
 _DLL = Path(__file__).parent / "native" / "sigil_circuit.dll"
 
-PATTERNS = ["seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random"]
+PATTERNS = ["seal", "pentagram", "ring", "wheel", "grid", "ziggurat", "random",
+            "hexagram", "pentacle", "tree", "ouroboros", "triquetra", "ankh",
+            "sriyanta", "triskel", "vesica",
+            "isa", "fehu", "algiz", "hagalaz", "othala", "bindrune"]
 
 _int_p = ctypes.POINTER(ctypes.c_int32)
 _float_p = ctypes.POINTER(ctypes.c_float)
@@ -43,6 +46,12 @@ class SigilCircuit:
             _float_p, ctypes.c_int, _float_p, _float_p, _float_p,
             ctypes.c_float, ctypes.c_float, ctypes.c_float, _float_p]
         self.dll.sigil_step.restype = None
+        self.dll.sigil_native_n.argtypes = [ctypes.c_int]
+        self.dll.sigil_native_n.restype = ctypes.c_int
+
+    def native_n(self, pattern: int) -> int:
+        """Taille canonique (0 = redimensionnable, ex. Arbre de Vie = 10)."""
+        return int(self.dll.sigil_native_n(pattern))
 
     def edges(self, pattern: int, n: int, seed: int = 1234):
         cap = 8 * n
@@ -143,14 +152,15 @@ def bench_speed(circ, W, steps=20000, reps=3):
 
 def main():
     circ = SigilCircuit()
-    print(f"{'pattern':<10} {'edges':>6} {'kpas/s':>8} {'rate':>7} "
+    print(f"{'pattern':<10} {'n':>4} {'edges':>6} {'kpas/s':>8} {'rate':>7} "
           f"{'burst':>7} {'domHz':>7} {'MC':>6}")
     for p, name in enumerate(PATTERNS):
-        n = 64
+        nn = circ.native_n(p)
+        n = nn if nn else 64
         W, m = build_W(circ, p, n)
         sps = bench_speed(circ, W) / 1000.0
         rate, burst, dom, MC = run_and_measure(circ, W)
-        print(f"{name:<10} {m:>6} {sps:>8.1f} {rate:>7.3f} "
+        print(f"{name:<10} {n:>4} {m:>6} {sps:>8.1f} {rate:>7.3f} "
               f"{burst:>7.2f} {dom:>7.4f} {MC:>6.2f}")
     print("\n--- vitesse vs taille (pattern seal) ---")
     for n in (32, 64, 128):
