@@ -21,6 +21,7 @@
         <button id="tab-pet" class="active">🪰 Fly</button>
         <button id="tab-chess">♟️ Chess</button>
         <button id="tab-lab" title="Virtual lesions on the connectome">⚗️ Lab</button>
+        <button id="tab-sigils" title="Sigil circuits: topology becomes sound">🔯 Sigils</button>
       </div>
 
       <!-- Tamagotchi panel -->
@@ -102,6 +103,21 @@
         </div>
         <div id="lab-result">Brain intact.</div>
       </div>
+
+      <!-- 🔯 Sigils panel: topology becomes sound -->
+      <div id="sigils-view" class="hidden">
+        <p class="lab-intro">
+          56 sigil topologies as tiny LIF circuits (Solomon seals, Kabbalah,
+          runes, sacred geometry). Pick one: hear its rhythm, see its metrics.
+        </p>
+        <div class="controls">
+          <select id="sigil-select"><option>Loading…</option></select>
+          <button id="btn-sigil-play">▶ Play</button>
+          <button id="btn-sigil-stop">⏹ Stop</button>
+        </div>
+        <div id="sigil-metrics">—</div>
+        <div id="sigil-gait" class="room-status"></div>
+      </div>
     </section>
 
     <section id="brain-panel">
@@ -162,6 +178,7 @@
   <script src="pet.js"></script>
   <script src="theater.js"></script>
   <script src="lab.js"></script>
+  <script src="sigils.js"></script>
   <script src="spear.js"></script>
   <script src="app.js"></script>
   <script src="browser.js"></script>
