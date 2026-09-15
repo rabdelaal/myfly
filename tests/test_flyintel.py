@@ -148,6 +148,22 @@ def test_metaphor_stub():
     print("ok test_metaphor_stub")
 
 
+def test_sigil():
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    from bench_sigil import SigilCircuit, build_W, run_and_measure
+    circ = SigilCircuit()
+    s_src, _ = circ.edges(0, 64)   # seal
+    r_src, _ = circ.edges(2, 64)   # ring
+    assert len(r_src) == 64, len(r_src)          # cycle exact
+    assert len(s_src) > len(r_src)               # sceau plus riche que l'anneau
+    W, m = build_W(circ, 0, 32)
+    rate, burst, dom, MC = run_and_measure(circ, W, T=300)
+    assert 0.0 < rate < 0.5, rate
+    assert MC >= 0.0
+    print("ok test_sigil")
+
+
 def test_websearch():
     import requests as _rq
     from flyintel import websearch
@@ -173,6 +189,6 @@ def test_websearch():
 if __name__ == "__main__":
     for fn in [test_module_import, test_brain_reusable, test_backend_dispatch,
                test_spear_parity_js, test_readouts_trainable, test_gradcheck,
-               test_benchmark_smoke, test_metaphor_stub, test_websearch]:
+               test_benchmark_smoke, test_metaphor_stub, test_sigil, test_websearch]:
         fn()
     print("\nALL FLYINTEL TESTS PASSED")
