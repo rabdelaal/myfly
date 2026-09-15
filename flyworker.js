@@ -46,6 +46,7 @@ const RECIPES = {
   chess: { pattern: 1, frustration: 0.4 },
   courtship: { smell: 1, vibration: 0.6, touch: 0.3 },
   threat: { touch: 1, vibration: 1, frustration: 0.5 },
+  study: { pattern: 1, light: 0.5, touch: 0.2 },
 };
 
 function buildNet(n, seed) {

@@ -180,7 +180,9 @@ class Chess3D {
   }
 
   _setupOrbit() {
-    let isDown = false, px = 0, py = 0, downX = 0, downY = 0, moved = false;
+    // Pointer Events unifiés : souris + tactile. Tap (<6px, <400ms) = clic
+    // case ; glisser = orbite. touch-action:none (CSS) bloque le scroll.
+    let isDown = false, px = 0, py = 0, downX = 0, downY = 0, downT = 0;
     let theta = Math.PI / 4, phi = Math.PI / 3, radius = 11.5;
     const update = () => {
       this.camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
@@ -190,27 +192,32 @@ class Chess3D {
     };
     update();
 
-    this.canvas.addEventListener('mousedown', (e) => {
-      isDown = true; moved = false;
+    this.canvas.addEventListener('pointerdown', (e) => {
+      isDown = true;
       px = downX = e.clientX; py = downY = e.clientY;
+      downT = performance.now();
+      try { this.canvas.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
     });
-    window.addEventListener('mouseup', (e) => {
+    this.canvas.addEventListener('pointermove', (e) => {
+      if (!isDown) return;
+      const dx = e.clientX - px, dy = e.clientY - py;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
+        theta += dx * 0.01;
+        phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, phi - dy * 0.01));
+        update();
+      }
+      px = e.clientX; py = e.clientY;
+    });
+    const up = (e) => {
       if (!isDown) return;
       isDown = false;
       const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
-      if (dist < 5 && this.onSquareClick) {
+      if (dist < 6 && performance.now() - downT < 600 && this.onSquareClick) {
         this.onSquareClick(this._pickSquare(e.clientX, e.clientY));
       }
-    });
-    window.addEventListener('mousemove', (e) => {
-      if (!isDown) return;
-      const dx = e.clientX - px, dy = e.clientY - py;
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) moved = true;
-      theta += dx * 0.01;
-      phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, phi - dy * 0.01));
-      px = e.clientX; py = e.clientY;
-      update();
-    });
+    };
+    this.canvas.addEventListener('pointerup', up);
+    this.canvas.addEventListener('pointercancel', () => { isDown = false; });
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       radius = Math.max(6, Math.min(30, radius + e.deltaY * 0.01));
@@ -224,10 +231,17 @@ class Chess3D {
   }
 
   resize() {
-    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-    if (!w || !h) return;
-    this.renderer.setSize(w, h);
-    this.camera.aspect = w / h;
+    // Dimensionnement explicite : en % pur, le canvas restait à 0px quand
+    // l'onglet était masqué à l'init (clientWidth = 0). On mesure le parent.
+    const parent = this.canvas.parentElement;
+    const w = parent ? parent.clientWidth : this.canvas.clientWidth;
+    const h = this.canvas.clientHeight || (parent ? parent.clientHeight : 0);
+    if (w) this.canvas.style.width = w + 'px';
+    if (h) this.canvas.style.height = h + 'px';
+    const cw = this.canvas.clientWidth, ch = this.canvas.clientHeight;
+    if (!cw || !ch) return;
+    this.renderer.setSize(cw, ch);
+    this.camera.aspect = cw / ch;
     this.camera.updateProjectionMatrix();
   }
 }

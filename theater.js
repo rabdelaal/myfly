@@ -13,10 +13,16 @@ const Theater = {
 
     const data = window.CONNECTOME_DATA || {};
     const n = data.positions ? data.positions.length : 5000;
-    this.view = new ConnectomeView(canvas, n,
-                                   data.positions || null,
-                                   data.category || null,
-                                   data.hotspot || null);
+    try {
+      this.view = new ConnectomeView(canvas, n,
+                                     data.positions || null,
+                                     data.category || null,
+                                     data.hotspot || null);
+    } catch (e) {
+      document.getElementById('theater-caption').textContent =
+        'WebGL unavailable: ' + e.message;
+      return;
+    }
     if (data.edges && data.edges.a) this.view.setEdges(data.edges);
     this.view.autoOrbit = true;
     // ⚗️ Labo : appliquer la lésion en cours (neurones grisés)
@@ -31,11 +37,20 @@ const Theater = {
       this.view.resize();
     });
 
+    if (window.LOCAL_MODE) {
+      document.getElementById('theater-caption').textContent =
+        'Demo mode — orbiting only, no live spikes without backend';
+      const cap = document.getElementById('theater-caption');
+      cap.classList.remove('caption-show');
+      void cap.offsetWidth;
+      cap.classList.add('caption-show');
+      return; // pas de WebSocket en local : orbite seule, zéro erreur console
+    }
     const proto = (window.FLY_API || '').replace(/^http/, 'ws');
     this.ws = new WebSocket(proto + '/ws/live');
     this.ws.onmessage = (ev) => this._onFrame(JSON.parse(ev.data));
     this.ws.onclose = () => { if (!overlay.classList.contains('hidden')) {
-      document.getElementById('theater-caption').textContent = 'Connexion perdue…';
+      document.getElementById('theater-caption').textContent = 'Connection lost…';
     }};
   },
 
@@ -54,7 +69,7 @@ const Theater = {
     }
     document.getElementById('th-octo').textContent = '×' + m.neuromod.toFixed(2);
     const moodEl = document.getElementById('th-mood');
-    moodEl.textContent = m.sleeping ? '💤 dort' : m.mood;
+    moodEl.textContent = m.sleeping ? '💤 sleeping' : T(m.mood);
 
     if (m.caption) {
       const cap = document.getElementById('theater-caption');
@@ -69,6 +84,7 @@ const Theater = {
     if (this.ws) { this.ws.close(); this.ws = null; }
     window.removeEventListener('resize', this._onResize);
     document.getElementById('theater').classList.add('hidden');
+    if (this.view && this.view.destroy) this.view.destroy(); // stoppe la boucle rAF
     this.view = null;
   },
 };

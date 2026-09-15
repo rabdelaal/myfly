@@ -3,7 +3,8 @@
 class ConnectomeView {
   constructor(canvas, nNeurons = 5000, positions = null, categories = null, hotspots = null) {
     this.canvas = canvas;
-    this.gl = canvas.getContext('webgl');
+    this.gl = canvas.getContext('webgl', { antialias: false, alpha: false });
+    if (!this.gl) throw new Error('WebGL unavailable in this browser');
     this.n = nNeurons;
 
     // Positions : réelles (normalisées par le backend) ou aléatoires
@@ -330,7 +331,7 @@ class ConnectomeView {
   }
 
   _animate() {
-    requestAnimationFrame(() => this._animate());
+    this._raf = requestAnimationFrame(() => this._animate());
     const gl = this.gl;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0.02, 0.02, 0.04, 1);
@@ -363,6 +364,17 @@ class ConnectomeView {
     this.canvas.width = this.canvas.clientWidth * window.devicePixelRatio;
     this.canvas.height = this.canvas.clientHeight * window.devicePixelRatio;
     this._setCamera();
+  }
+
+  destroy() {
+    // Stoppe la boucle rAF (le théâtre en recrée une à chaque ouverture :
+    // sans ça, les contextes WebGL s'empilent en arrière-plan).
+    if (this._raf) cancelAnimationFrame(this._raf);
+    this._raf = null;
+    const gl = this.gl;
+    if (gl && gl.getExtension('WEBGL_lose_context')) {
+      gl.getExtension('WEBGL_lose_context').loseContext();
+    }
   }
 }
 

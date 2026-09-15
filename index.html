@@ -3,31 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="theme-color" content="#04040a" />
+  <meta name="description" content="FlyChess — a living fruit-fly brain (MaleCNS) that plays chess. Raise it, lesion it, listen to it." />
   <title>FlyChess — Raise your fly</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cellipse cx='11' cy='17' rx='9' ry='3.4' fill='%234de3ff' opacity='0.55' transform='rotate(-24 11 17)'/%3E%3Cellipse cx='29' cy='17' rx='9' ry='3.4' fill='%234de3ff' opacity='0.55' transform='rotate(24 29 17)'/%3E%3Cellipse cx='20' cy='24' rx='5.5' ry='8' fill='%233a3a52' stroke='%238b7bff' stroke-width='1.4'/%3E%3Ccircle cx='17.6' cy='17.5' r='2.6' fill='%23c0392b'/%3E%3Ccircle cx='22.4' cy='17.5' r='2.6' fill='%23c0392b'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <h1>FlyChess</h1>
-    <p class="subtitle">
-      Drosophila melanogaster · <span id="backend-status">connecting to backend…</span>
-    </p>
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <ellipse cx="11" cy="17" rx="9" ry="3.4" fill="#4de3ff" opacity="0.55" transform="rotate(-24 11 17)"/>
+        <ellipse cx="29" cy="17" rx="9" ry="3.4" fill="#4de3ff" opacity="0.55" transform="rotate(24 29 17)"/>
+        <ellipse cx="20" cy="24" rx="5.5" ry="8" fill="#3a3a52" stroke="#8b7bff" stroke-width="1.4"/>
+        <circle cx="17.6" cy="17.5" r="2.6" fill="#c0392b"/>
+        <circle cx="22.4" cy="17.5" r="2.6" fill="#c0392b"/>
+      </svg>
+      <div>
+        <h1>FlyChess</h1>
+        <p class="subtitle">
+          Drosophila melanogaster ·
+          <span id="backend-status" class="status-pill" role="status"><span class="dot"></span><span id="backend-status-text">connecting…</span></span>
+        </p>
+      </div>
+    </div>
+    <div class="brain-chips" id="brain-chips" aria-label="Brain identity"></div>
   </header>
 
   <main>
-    <section id="left-panel">
-      <div class="tabs">
-        <button id="tab-pet" class="active">🪰 Fly</button>
-        <button id="tab-chess">♟️ Chess</button>
-        <button id="tab-lab" title="Virtual lesions on the connectome">⚗️ Lab</button>
-        <button id="tab-sigils" title="Sigil circuits: topology becomes sound">🔯 Sigils</button>
+    <section id="left-panel" aria-label="Controls">
+      <div class="tabs" role="tablist" aria-label="Panels">
+        <button id="tab-pet" class="active" role="tab" aria-selected="true" aria-controls="pet-view">🪰 Fly</button>
+        <button id="tab-chess" role="tab" aria-selected="false" aria-controls="chess-view">♟️ Chess</button>
+        <button id="tab-lab" role="tab" aria-selected="false" aria-controls="lab-view" title="Virtual lesions on the connectome">⚗️ Lab</button>
+        <button id="tab-sigils" role="tab" aria-selected="false" aria-controls="sigils-view" title="Sigil circuits: topology becomes sound">🔯 Sigils</button>
+        <button id="tab-mind" role="tab" aria-selected="false" aria-controls="mind-view" title="What the fly learned from the web">📚 Mind</button>
       </div>
 
       <!-- Tamagotchi panel -->
-      <div id="pet-view">
+      <div id="pet-view" role="tabpanel" aria-labelledby="tab-pet">
         <div id="fly-stage">
-          <svg id="fly-emoji" viewBox="0 0 120 100" width="150" height="125" aria-label="fly">
+          <span class="mood-halo" aria-hidden="true"></span>
+          <svg id="fly-emoji" viewBox="0 0 120 100" width="150" height="125" role="img" aria-label="The fly">
             <g class="fly-wings">
               <ellipse cx="30" cy="44" rx="24" ry="8" fill="#9fd8ff" opacity="0.55" transform="rotate(-24 30 44)"/>
               <ellipse cx="90" cy="44" rx="24" ry="8" fill="#9fd8ff" opacity="0.55" transform="rotate(24 90 44)"/>
@@ -48,88 +68,128 @@
               <line x1="73" y1="72" x2="92" y2="81"/>
             </g>
           </svg>
-          <span id="fly-zzz">💤</span>
+          <span id="fly-zzz" aria-hidden="true">💤</span>
         </div>
-        <div id="pet-message">Loading…</div>
-        <div class="stat-bars">
-          <div class="stat-row"><span>Satiety</span><div class="stat-bar"><div id="bar-satiety"></div></div><b id="val-satiety">—</b></div>
-          <div class="stat-row"><span>Happiness</span><div class="stat-bar"><div id="bar-happiness"></div></div><b id="val-happiness">—</b></div>
-          <div class="stat-row"><span>Energy</span><div class="stat-bar"><div id="bar-energy"></div></div><b id="val-energy">—</b></div>
-          <div class="stat-row"><span>Hygiene</span><div class="stat-bar"><div id="bar-hygiene"></div></div><b id="val-hygiene">—</b></div>
+        <div id="pet-message" role="status" aria-live="polite">Loading…</div>
+        <div class="stat-bars" role="group" aria-label="Fly stats">
+          <div class="stat-row"><span><span class="ico">🍯</span>Satiety</span><div class="stat-bar"><div id="bar-satiety"></div></div><b id="val-satiety">—</b></div>
+          <div class="stat-row"><span><span class="ico">💛</span>Happiness</span><div class="stat-bar"><div id="bar-happiness"></div></div><b id="val-happiness">—</b></div>
+          <div class="stat-row"><span><span class="ico">⚡</span>Energy</span><div class="stat-bar"><div id="bar-energy"></div></div><b id="val-energy">—</b></div>
+          <div class="stat-row"><span><span class="ico">🚿</span>Hygiene</span><div class="stat-bar"><div id="bar-hygiene"></div></div><b id="val-hygiene">—</b></div>
         </div>
         <div class="pet-controls">
-          <button id="btn-feed">🍯 Feed</button>
-          <button id="btn-pet-cuddle">🥰 Pet</button>
-          <button id="btn-clean">🚿 Wash</button>
-          <button id="btn-sleep">💤 Sleep</button>
+          <button id="btn-feed" aria-label="Feed the fly">🍯 Feed</button>
+          <button id="btn-pet-cuddle" aria-label="Pet the fly">🥰 Pet</button>
+          <button id="btn-clean" aria-label="Wash the fly">🚿 Wash</button>
+          <button id="btn-sleep" aria-label="Toggle sleep">💤 Sleep</button>
           <button id="btn-courtship" title="Courtship: olfactory stimulus toward the fru/dsx hotspots">🎻 Court</button>
           <button id="btn-threat" title="Threat: mechanosensory stimulus toward the aggression pathway">😠 Threaten</button>
           <button id="btn-study" title="Study: the fly recalls what it learned from the web">📚 Study</button>
         </div>
-        <div id="pet-meta">—</div>
+        <div class="xp-wrap">
+          <svg class="xp-ring" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+            <defs>
+              <linearGradient id="xpGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#5b8cff"/>
+                <stop offset="1" stop-color="#52ffa8"/>
+              </linearGradient>
+            </defs>
+            <circle class="bg" cx="17" cy="17" r="13" fill="none" stroke-width="4"/>
+            <circle class="fg" id="xp-arc" cx="17" cy="17" r="13" fill="none" stroke-width="4" stroke-dasharray="81.7" stroke-dashoffset="81.7"/>
+          </svg>
+          <div id="pet-meta">—</div>
+        </div>
       </div>
 
       <!-- Chess panel (mini-game) -->
-      <div id="chess-view" class="hidden">
-        <canvas id="board-canvas"></canvas>
-        <div id="status">Loading…</div>
+      <div id="chess-view" class="hidden" role="tabpanel" aria-labelledby="tab-chess">
+        <canvas id="board-canvas" role="application" aria-label="3D chess board: click a white piece, then a destination"></canvas>
+        <div id="status" role="status" aria-live="polite">Loading…</div>
         <div class="controls">
-          <button id="btn-new">New game</button>
-          <button id="btn-undo">Undo</button>
-          <button id="btn-hint">Hint</button>
+          <button id="btn-new">✨ New game</button>
+          <button id="btn-undo">↩ Undo</button>
+          <button id="btn-hint">💡 Hint</button>
         </div>
         <div class="room-controls">
           <button id="btn-room-create" title="Creates a room: you play white, the fly plays black">⚔️ Room + fly</button>
           <button id="btn-room-create-h2h" title="Creates a 2-human room (fast, no simulation)">👥 Room 2P</button>
-          <input id="room-code" placeholder="CODE" maxlength="4" size="5" />
+          <input id="room-code" placeholder="CODE" maxlength="4" size="5" aria-label="Room code" />
           <button id="btn-room-join">Join</button>
           <button id="btn-room-leave" class="hidden">Leave</button>
         </div>
-        <div id="room-status" class="room-status"></div>
+        <div id="room-status" class="room-status" aria-live="polite"></div>
       </div>
 
       <!-- ⚗️ Lab panel: virtual lesions -->
-      <div id="lab-view" class="hidden">
+      <div id="lab-view" class="hidden" role="tabpanel" aria-labelledby="tab-lab">
         <p class="lab-intro">
           Lesion a population of the connectome (MaleCNS annotations, Cell
-          2026 paper): its neurons are <b>grayed out</b> in the brain and stop
+          2026 paper): its neurons dim in the brain and stop
           firing — watch it live in the theater, then measure the feeding
           reflex deficit.
         </p>
-        <div id="lab-groups">Loading…</div>
+        <div id="lab-groups" aria-live="polite"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
         <div class="controls">
           <button id="btn-lab-clear">🩹 Heal</button>
           <button id="btn-lab-test">🧪 Test reflex</button>
         </div>
-        <div id="lab-result">Brain intact.</div>
+        <div id="lab-result" aria-live="polite">Brain intact.</div>
       </div>
 
       <!-- 🔯 Sigils panel: topology becomes sound -->
-      <div id="sigils-view" class="hidden">
+      <div id="sigils-view" class="hidden" role="tabpanel" aria-labelledby="tab-sigils">
         <p class="lab-intro">
           56 sigil topologies as tiny LIF circuits (Solomon seals, Kabbalah,
           runes, sacred geometry). Pick one: hear its rhythm, see its metrics.
         </p>
         <div class="controls">
-          <select id="sigil-select"><option>Loading…</option></select>
+          <select id="sigil-select" aria-label="Sigil topology"><option>Loading…</option></select>
           <button id="btn-sigil-play">▶ Play</button>
           <button id="btn-sigil-stop">⏹ Stop</button>
         </div>
         <div id="sigil-metrics">—</div>
-        <div id="sigil-gait" class="room-status"></div>
+        <div id="sigil-gait" class="room-status" aria-live="polite"></div>
+      </div>
+
+      <!-- 📚 Mind panel: what the fly learned -->
+      <div id="mind-view" class="hidden" role="tabpanel" aria-labelledby="tab-mind">
+        <p class="lab-intro">
+          The fly reads the web and remembers — with sources. Teach it
+          something, then ask it to recall.
+        </p>
+        <div class="mind-row">
+          <input id="learn-input" placeholder="Teach the fly… (e.g. drosophila mushroom body)" aria-label="Topic to learn" maxlength="120" />
+          <button id="btn-learn">📖 Learn</button>
+        </div>
+        <div class="mind-row">
+          <input id="search-input" placeholder="Ask its memory… (e.g. memory)" aria-label="Search memory" maxlength="120" />
+          <button id="btn-search">🔎 Recall</button>
+        </div>
+        <div id="search-results" aria-live="polite"></div>
+        <div class="mind-card">
+          <h4>📚 Learned knowledge</h4>
+          <div id="knowledge-list"><span class="empty-note">Nothing learned yet — teach it above.</span></div>
+        </div>
       </div>
     </section>
 
-    <section id="brain-panel">
+    <section id="brain-panel" aria-label="Brain visualization">
       <div class="brain-header">
-        <span>Fly brain <span id="gl-status"></span></span>
+        <span class="brain-title">FLY BRAIN <span id="gl-status"></span></span>
         <span style="display:flex; gap:0.5rem;">
-          <button id="btn-sound">🔊 Sound</button>
-          <button id="btn-live">⚡ Live</button>
+          <button id="btn-sound" aria-pressed="false">🔊 Sound</button>
+          <button id="btn-live" aria-pressed="false">⚡ Live</button>
           <button id="btn-theater">🎬 Brain live</button>
         </span>
       </div>
-      <canvas id="connectome-canvas"></canvas>
+      <div class="brain-canvas-wrap">
+        <canvas id="connectome-canvas" role="img" aria-label="3D connectome: neurons light up as they spike"></canvas>
+        <div class="hud" aria-hidden="true">
+          <span class="chip">mood <b id="hud-mood">—</b></span>
+          <span class="chip" id="hud-lesion" style="display:none">⚗️ lesion <b id="hud-lesion-name">—</b></span>
+          <span class="chip" id="hud-frames" style="display:none">⚡ <b id="hud-spikes">0</b> spikes</span>
+        </div>
+      </div>
       <div class="brain-legend">
         <span><i style="background:#33b3ff"></i> Sensory</span>
         <span><i style="background:#8c66e6"></i> Interneurons</span>
@@ -139,16 +199,18 @@
       </div>
       <div class="stats">
         <div><span>Neurons</span><strong id="stat-neurons">—</strong></div>
-        <div><span>Synapses</span><strong id="stat-synapses">—</strong></div>
+        <div><span><span id="stat-syn-label">Synapses</span></span><strong id="stat-synapses">—</strong></div>
         <div><span>Mood</span><strong id="stat-mood">—</strong></div>
       </div>
       <div id="dimorphism-card" class="dimorphism-card" hidden></div>
-      <div id="candidates"></div>
+      <div id="candidates" aria-live="polite"></div>
     </section>
   </main>
 
+  <div id="toasts" aria-live="polite" aria-label="Notifications"></div>
+
   <!-- Brain theater: fullscreen -->
-  <div id="theater" class="hidden">
+  <div id="theater" class="hidden" role="dialog" aria-label="Fullscreen brain theater">
     <canvas id="theater-canvas"></canvas>
     <div id="theater-hud">
       <div class="th-title">◆ BRAIN LIVE</div>
@@ -179,6 +241,7 @@
   <script src="theater.js"></script>
   <script src="lab.js"></script>
   <script src="sigils.js"></script>
+  <script src="mind.js"></script>
   <script src="spear.js"></script>
   <script src="app.js"></script>
   <script src="browser.js"></script>
