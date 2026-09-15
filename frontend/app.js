@@ -4,14 +4,124 @@ let currentState = null;      // dernier /api/state ou réponse de /api/move
 let selectedSquare = null;    // case sélectionnée (0..63)
 let busy = false;             // the fly is thinking
 
-async function api(path, body = null) {
-  const r = await fetch(API + path, {
-    method: body ? 'POST' : 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : null,
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+// --- i18n : le backend parle français, la page répond en anglais ---
+const I18N_RAW = {
+  // humeurs
+  'dort': 'sleeping', 'ravie': 'delighted', 'contente': 'content', 'grognon': 'grumpy',
+  'affamée': 'starving', 'misérable': 'miserable', 'épuisée': 'exhausted', 'inconfortable': 'itchy',
+  // messages d'humeur
+  'Chut… elle dort profondément 💤': 'Shh… she is fast asleep 💤',
+  'Elle bourdonne de bonheur autour de son terrarium 🪰✨': 'She buzzes happily around her terrarium 🪰✨',
+  "Elle se lisse les antennes, l'air tranquille.": 'She smooths her antennae, calm and quiet.',
+  'Elle boude dans un coin du terrarium 😤': 'She sulks in a corner of the terrarium 😤',
+  'Elle tourne en rond : elle crève de faim ! 🍯': 'She paces in circles — starving! 🍯',
+  "Elle a l'air vraiment triste…": 'She looks truly sad…',
+  'Ses ailes traînent : elle est épuisée 💤': 'Her wings droop — she is exhausted 💤',
+  'Elle se démange : une petite toilette s\u2019impose 🚿': 'She itches — a little wash is in order 🚿',
+  'Elle se démange : une petite toilette s’impose 🚿': 'She itches — a little wash is in order 🚿',
+  // actions
+  'Elle dort déjà ! 💤': 'She is already asleep! 💤',
+  'Les lumières s’éteignent… bonne nuit 🌙': 'Lights out… good night 🌙',
+  'Elle est déjà réveillée !': 'She is already awake!',
+  'Chut ! Elle dort. Réveille-la d’abord 💤': 'Shh! She is asleep. Wake her first 💤',
+  'Elle n’a plus faim du tout et boude le sirop 🙄': 'She is completely full and snubs the syrup 🙄',
+  'Elle n\u2019a plus faim du tout et boude le sirop 🙄': 'She is completely full and snubs the syrup 🙄',
+  'Gloup ! Elle se jette sur le sirop, ailes vibrantes de plaisir 🍯': 'Gulp! She dives into the syrup, wings buzzing with joy 🍯',
+  'Elle goûte distraitement quelques gouttes…': 'She absent-mindedly tastes a few drops…',
+  'Elle frotte ses pattes avant, visiblement ravie d’être caressée 🥰': 'She rubs her front legs, visibly delighted to be petted 🥰',
+  'Elle frotte ses pattes avant, visiblement ravie d\u2019être caressée 🥰': 'She rubs her front legs, visibly delighted to be petted 🥰',
+  'Un petit frémissement antennaire, elle te tolère.': 'A tiny antennal shiver — she tolerates you.',
+  'Pfuit ! Éclaboussée mais toute propre, elle s’essuie avec énergie 🚿': 'Splashed but sparkling, she dries off energetically 🚿',
+  'Elle survit au bain avec dignité.': 'She survives the bath with dignity.',
+  'Elle s’étire, déploie ses ailes et bourdonne : prête ! ☀️': 'She stretches, unfolds her wings and buzzes: ready! ☀️',
+  'Elle ouvre un œil… grognonne… mais se lève.': 'She opens one eye… grumpy… but gets up.',
+  'Ses lobes optiques s’affolent sur l’échiquier : elle ADORE ça ♟️': 'Her optic lobes race over the board — she LOVES this ♟️',
+  'Ses lobes optiques s\u2019affolent sur l\u2019échiquier : elle ADORE ça ♟️': 'Her optic lobes race over the board — she LOVES this ♟️',
+  'Elle regarde l’échiquier sans grande conviction.': 'She eyes the board without much conviction.',
+  'Elle regarde l\u2019échiquier sans grande conviction.': 'She eyes the board without much conviction.',
+  'Il déploie une aile et chante : parade nuptiale en cours 🎻🪰': 'He unfurls a wing and sings: courtship display in progress 🎻🪰',
+  'Un petit frétillement d’aile, timide…': 'A little wing flutter, shy…',
+  'Il fonce pattes en avant, ailes écartées : intimidation maximale 😠': 'He charges legs-first, wings spread: maximum intimidation 😠',
+  'Il fait un pas menaçant puis hésite.': 'He takes a menacing step, then hesitates.',
+  'Ses yeux composés scannent frénétiquement : elle dévore ce savoir 📚✨': 'Her compound eyes scan frantically — she devours this knowledge 📚✨',
+  'Elle parcourt distraitement quelques lignes…': 'She idly skims a few lines…',
+  'Elle suit la partie d’un œil vif, ailes frémissantes ♟️': 'She follows the game with a keen eye, wings aflutter ♟️',
+  'La mouche dort. Réveille-la depuis l’onglet Mouche 💤': 'The fly is asleep. Wake her from the Fly tab 💤',
+  // préfixe de citation study (le titre/texte cité reste tel quel)
+  '📚 Elle cite « ': '📚 She recalls “ ',
+  // statuts locaux FR résiduels
+  'À toi — clique une pièce': 'Your turn — click a piece',
+  'Trait aux noirs…': 'Black to move…',
+  'Mode local : à toi (blancs), la mouche joue les noirs': 'Local mode: your move (white), the fly plays black',
+  // labo : noms de groupes par clé (plus robuste que le texte)
+  '__lab:mb': 'Mushroom body (MB)',
+  '__lab:cx': 'Central complex (CX)',
+  '__lab:dimorphic': 'Male/female dimorphic',
+  '__lab:frudsx': 'fruitless / doublesex',
+  '__lab:descending': 'Descending neurons',
+  '__lab:optic': 'Optic lobes',
+  '__lab:random4k': 'Random control (~4k)',
+};
+// Normalisation des apostrophes : le backend envoie du ASCII ('),
+// les sources peuvent contenir des ’ typographiques — on unifie pour
+// que la recherche du dictionnaire ne rate jamais (bug vu en prod).
+const I18N = {};
+function normApos(s) {
+  return typeof s === 'string' ? s.replace(/[’‘‚‛′″]/g, "'") : s;
+}
+for (const [k, v] of Object.entries(I18N_RAW)) I18N[normApos(k)] = v;
+function T(s) {
+  if (s === null || s === undefined) return s;
+  const key = normApos(s);
+  if (Object.prototype.hasOwnProperty.call(I18N, key)) return I18N[key];
+  const cite = normApos('📚 Elle cite « ');
+  if (typeof key === 'string' && key.includes(cite)) {
+    return key.replace(cite, I18N[cite]).replace(/ » : /g, '": ');
+  }
+  return s;
+}
+
+// --- Toasts : plus aucun échec silencieux ---
+function toast(msg, type = 'info', ms = 4200) {
+  const box = document.getElementById('toasts');
+  if (!box) return;
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  box.appendChild(el);
+  while (box.children.length > 4) box.firstChild.remove();
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 350);
+  }, ms);
+}
+
+// fetch avec timeout (les simus cerveau prennent des dizaines de secondes)
+async function api(path, body = null, timeoutMs = 180000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(API + path, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : null,
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`Request timed out: ${path}`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Bouton occupé : spinner + désactivé, restauration garantie
+function setBusy(btn, on) {
+  if (!btn) return;
+  if (on) { btn.disabled = true; btn.classList.add('busy'); }
+  else { btn.disabled = false; btn.classList.remove('busy'); }
 }
 
 function setStatus(msg) {
@@ -111,6 +221,10 @@ function fenPieceAt(fen, sq) {
 
 async function refreshState(data) {
   if (!data) return;
+  // Normalisation : /api/state dit is_game_over, /api/move dit game_over
+  if (data.game_over === undefined && data.is_game_over !== undefined) {
+    data.game_over = data.is_game_over;
+  }
   currentState = data;
   if (data.pet) { PetUI.state = data.pet; PetUI.render(); }
   if (data.fen) board3d.setPosition(data.fen);
@@ -134,6 +248,8 @@ async function refreshState(data) {
 let ws = null; // WebSocket pour le streaming des spikes en temps réel
 let roomInfo = null; // {code, role, ...} quand on est dans un salon
 let liveWS = null; // flux continu du cerveau (toggle ⚡ Live)
+let liveWant = false; // l'utilisateur veut le live (reconnexion auto)
+let liveRetries = 0;
 let audioCtx = null; // clics Geiger des spikes (toggle 🔊 Son)
 let soundOn = false;
 
@@ -161,35 +277,76 @@ function toggleSound() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   soundOn = !soundOn;
   btn.classList.toggle('on', soundOn);
+  btn.setAttribute('aria-pressed', String(soundOn));
+  toast(soundOn ? '🔊 Spike clicks on' : '🔇 Sound off', 'info', 1800);
 }
 
 function toggleLive() {
   const btn = document.getElementById('btn-live');
-  if (liveWS) {
-    liveWS.close();
+  if (liveWS || liveWant) {
+    liveWant = false;
+    liveRetries = 0;
+    if (liveWS) liveWS.close();
     liveWS = null;
     btn.textContent = '⚡ Live';
     btn.classList.remove('live-on');
+    btn.setAttribute('aria-pressed', 'false');
+    document.getElementById('hud-frames').style.display = 'none';
     return;
   }
+  liveWant = true;
+  liveRetries = 0;
+  openLive();
+}
+
+function openLive() {
+  const btn = document.getElementById('btn-live');
+  if (!liveWant) return;
   const proto = (API.replace(/^http/, 'ws')) + '/ws/live';
-  liveWS = new WebSocket(proto);
+  try {
+    liveWS = new WebSocket(proto);
+  } catch (e) {
+    scheduleLiveRetry(btn);
+    return;
+  }
+  liveWS.onopen = () => {
+    liveRetries = 0;
+    btn.textContent = '⏸ Live ON';
+    btn.classList.add('live-on');
+    btn.setAttribute('aria-pressed', 'true');
+    document.getElementById('hud-frames').style.display = '';
+  };
   liveWS.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.type === 'live' && connectome) {
       connectome.setActivation(m.spikes);
       playSpikeSound(m.spikes.length);
-      document.getElementById('stat-mood').textContent =
-        (m.sleeping ? '💤 ' : '') + m.mood;
+      const n = document.getElementById('hud-spikes');
+      if (n) n.textContent = m.spikes.length;
+      document.getElementById('stat-mood').textContent = T(
+        (m.sleeping ? '💤 ' : '') + m.mood);
     }
   };
   liveWS.onclose = () => {
     liveWS = null;
+    if (liveWant) scheduleLiveRetry(btn);
+  };
+  liveWS.onerror = () => { try { liveWS.close(); } catch (e) { /* retry via onclose */ } };
+}
+
+function scheduleLiveRetry(btn) {
+  if (!liveWant) return;
+  liveRetries++;
+  if (liveRetries > 6) {
+    liveWant = false;
     btn.textContent = '⚡ Live';
     btn.classList.remove('live-on');
-  };
-  btn.textContent = '⏸ Live ON';
-  btn.classList.add('live-on');
+    toast('Live feed unavailable — backend restarting?', 'err');
+    document.getElementById('hud-frames').style.display = 'none';
+    return;
+  }
+  btn.textContent = `⏳ Live…(${liveRetries})`;
+  setTimeout(openLive, Math.min(2000 * liveRetries, 10000));
 }
 
 function wsSend(obj) {
@@ -197,11 +354,15 @@ function wsSend(obj) {
     ws.send(JSON.stringify(obj));
   } else {
     setStatus('Not connected to backend — reload the page');
+    toast('Not connected — reload the page', 'err');
   }
 }
 
-function connectWS() {  try {
+let wsRetries = 0;
+function connectWS() {
+  try {
     ws = new WebSocket((API.replace(/^http/, 'ws')) + '/ws');
+    ws.onopen = () => { wsRetries = 0; };
     ws.onmessage = async (ev) => {
       const m = JSON.parse(ev.data);
       if (m.type === 'frame' && connectome) {
@@ -210,7 +371,7 @@ function connectWS() {  try {
         busy = false;
         refreshState(m.data);
         if (m.data.pet_reaction && m.data.pet_reaction.message) {
-          document.getElementById('pet-message').textContent = m.data.pet_reaction.message;
+          document.getElementById('pet-message').textContent = T(m.data.pet_reaction.message);
         }
         if (currentState && !currentState.game_over && currentState.turn === 'white') {
           setStatus('Your turn — click a white piece');
@@ -218,6 +379,7 @@ function connectWS() {  try {
       } else if (m.type === 'error') {
         busy = false;
         setStatus(`Error: ${m.detail}`);
+        toast(`Move error: ${m.detail}`, 'err');
       } else if (m.type === 'room') {
         roomInfo = m.data;
         // Le plateau suit le salon (premier affichage + coups adverses)
@@ -225,7 +387,14 @@ function connectWS() {  try {
         renderRoom();
       }
     };
-    ws.onclose = () => { ws = null; };
+    ws.onclose = () => {
+      ws = null;
+      // Reconnexion silencieuse : le REST prend le relais entre-temps
+      if (wsRetries < 5) {
+        wsRetries++;
+        setTimeout(() => { if (!ws) connectWS(); }, 2500 * wsRetries);
+      }
+    };
   } catch (e) { ws = null; }
 }
 
@@ -236,6 +405,7 @@ async function playMove(uci) {
   }
   busy = true;
   setStatus('The fly is thinking…');
+  renderCandidates(null); // placeholder "computing"
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'move', move: uci }));
     return; // la réponse arrive via ws.onmessage
@@ -244,11 +414,12 @@ async function playMove(uci) {
     const data = await api('/api/move', { move: uci });
     await refreshState(data);
     if (data.pet_reaction && data.pet_reaction.message) {
-      PetUI.lastActionMessage = data.pet_reaction.message;
-      document.getElementById('pet-message').textContent = data.pet_reaction.message;
+      PetUI.lastActionMessage = T(data.pet_reaction.message);
+      document.getElementById('pet-message').textContent = T(data.pet_reaction.message);
     }
   } catch (err) {
     setStatus(`Error: ${err.message}`);
+    toast(`Move failed: ${err.message}`, 'err');
   } finally {
     busy = false;
     if (currentState && !currentState.game_over && currentState.turn === 'white') {
@@ -277,50 +448,114 @@ function renderRoom() {
     r.role === 'spec' ? `Watching (${r.code})` : `Opponent moving (${r.code})…`);
 }
 
-function renderCandidates(scores) {  const el = document.getElementById('candidates');
+function renderCandidates(scores) {
+  const el = document.getElementById('candidates');
+  if (!scores) {
+    el.innerHTML = '<span class="candidates-hint">🧠 fly is evaluating…</span>';
+    return;
+  }
   const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (!entries.length) {
+    el.innerHTML = '<span class="candidates-hint">No candidate moves.</span>';
+    return;
+  }
   const max = Math.max(...entries.map(e => Math.abs(e[1])), 1e-6);
-  el.innerHTML = entries.map(([move, score]) => `
+  el.innerHTML = entries.map(([move, score], i) => `
     <div class="candidate">
-      <span style="width:60px">${move}</span>
+      <span class="rank">${i + 1}</span>
+      <span class="mv">${move}</span>
       <div class="bar"><div style="width:${(Math.abs(score) / max) * 100}%"></div></div>
-      <span style="width:50px;text-align:right">${score.toFixed(3)}</span>
+      <span class="sc">${score.toFixed(3)}</span>
     </div>
   `).join('');
 }
 
 let frameTimer = null;
 function playFrames(frames) {
+  if (!connectome) return;
   if (frameTimer) clearInterval(frameTimer);
+  const hud = document.getElementById('hud-frames');
+  const n = document.getElementById('hud-spikes');
+  if (hud) hud.style.display = '';
   let i = 0;
   frameTimer = setInterval(() => {
-    if (i >= frames.length) { clearInterval(frameTimer); return; }
+    if (i >= frames.length) {
+      clearInterval(frameTimer);
+      frameTimer = null;
+      if (hud) hud.style.display = 'none';
+      return;
+    }
     connectome.setActivation(frames[i]);
+    if (n) n.textContent = frames[i].length;
     i++;
   }, 26);
 }
 
 function switchTab(which) {
-  const tabs = ['pet', 'chess', 'lab', 'sigils'];
+  const tabs = ['pet', 'chess', 'lab', 'sigils', 'mind'];
   for (const t of tabs) {
     const btn = document.getElementById('tab-' + t);
-    if (btn) btn.classList.toggle('active', t === which);
+    if (btn) {
+      btn.classList.toggle('active', t === which);
+      btn.setAttribute('aria-selected', String(t === which));
+    }
   }
   document.getElementById('pet-view').classList.toggle('hidden', which !== 'pet');
   document.getElementById('chess-view').classList.toggle('hidden', which !== 'chess');
   document.getElementById('lab-view').classList.toggle('hidden', which !== 'lab');
   document.getElementById('sigils-view').classList.toggle('hidden', which !== 'sigils');
+  document.getElementById('mind-view').classList.toggle('hidden', which !== 'mind');
   // ⚗️ Labo : si le premier chargement a échoué (backend occupé au démarrage),
   // retenter à chaque ouverture de l'onglet.
   if (which === 'lab' && window.LabUI) LabUI.refresh().catch(() => {});
+  if (which === 'mind' && window.MindUI) MindUI.refresh().catch(() => {});
   if (which === 'chess' && board3d) board3d.resize(); // le canvas était masqué (taille 0)
+}
+
+function setBackendPill(mode, text) {
+  const pill = document.getElementById('backend-status');
+  const label = document.getElementById('backend-status-text');
+  if (!pill || !label) return;
+  pill.classList.remove('online', 'local', 'offline');
+  pill.classList.add(mode);
+  label.textContent = text;
+}
+
+function renderBrainChips(info) {
+  const el = document.getElementById('brain-chips');
+  if (!el) return;
+  const fmt = (n) => Number(n).toLocaleString('en-US');
+  el.innerHTML = [
+    `🧠 <b>${info.n_neurons > 100000 ? 'MaleCNS REAL' : 'synthetic demo'}</b>`,
+    `${fmt(info.n_neurons)} neurons`,
+    `${fmt(info.n_synapses)} synapses`,
+    info.synapse_model === 'alpha'
+      ? `α-Shiu ${info.wsyn_mv?.toFixed(3) ?? '?'} mV${info.n_sugar_grn ? ` · ${info.n_sugar_grn} sweet GRNs` : ''}`
+      : 'current synapses',
+    info.readout_trained ? '✓ trained readout' : '○ untrained readout',
+  ].map(c => `<span>${c}</span>`).join('');
+}
+
+function countUp(el, target, dur = 900) {
+  if (!el) return;
+  const t0 = performance.now();
+  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  function tick(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(target * e);
+    if (k < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 async function init() {
   // Choisir l'onglet AVANT de créer les canvas (un canvas dans un onglet
   // masqué a clientWidth = 0 et ne se dessine jamais)
   const params = new URLSearchParams(location.search);
-  if (params.get('tab') === 'chess') switchTab('chess');
+  if (['chess', 'lab', 'sigils', 'mind'].includes(params.get('tab'))) {
+    switchTab(params.get('tab'));
+  }
 
   const boardCanvas = document.getElementById('board-canvas');
   const connCanvas = document.getElementById('connectome-canvas');
@@ -340,45 +575,48 @@ async function init() {
     ]);
   } catch (e) {
     if (typeof BrowserMode !== 'undefined' && typeof Chess !== 'undefined') {
+      setBackendPill('local', 'local demo brain');
       await BrowserMode.start({ connCanvas });
       return;
     }
-    document.getElementById('backend-status').textContent =
-      'Pas de backend (lance uvicorn ou sers cette page avec chess.js + browser.js)';
+    setBackendPill('offline', 'no backend');
+    document.getElementById('pet-message').textContent =
+      'No backend (serve this page with chess.js + browser.js, or launch uvicorn)';
+    toast('Backend unreachable — running without live brain', 'err');
+    return;
   }
+  setBackendPill('online', 'live brain');
 
-  const info = await api('/api/info');
-  document.getElementById('stat-neurons').textContent = info.n_neurons.toLocaleString();
-  document.getElementById('stat-synapses').textContent = info.n_synapses.toLocaleString();
+  let info;
+  try {
+    info = await api('/api/info', null, 15000);
+  } catch (e) {
+    setBackendPill('offline', 'info failed');
+    toast(`Backend info failed: ${e.message}`, 'err');
+    throw e;
+  }
+  countUp(document.getElementById('stat-neurons'), info.n_neurons);
+  countUp(document.getElementById('stat-synapses'), info.n_synapses);
   // Bandeau d'état : on voit immédiatement sur quel cerveau on joue
-  const brainKind = info.n_neurons > 100000
-    ? 'cerveau RÉEL MaleCNS v1.0'
-    : 'cerveau synthétique de démonstration';
-  const synDesc = info.synapse_model === 'alpha'
-    ? `α-synapses Shiu (Wsyn ${info.wsyn_mv?.toFixed(3) ?? '?'} mV${info.n_sugar_grn ? `, ${info.n_sugar_grn} GRN sucrées` : ''})`
-    : 'synapses courants';
-  document.getElementById('backend-status').textContent =
-    `${brainKind} · ${info.n_neurons.toLocaleString('fr-FR')} neurones · ` +
-    `${info.n_synapses.toLocaleString('fr-FR')} synapses · ${synDesc} · ` +
-    (info.readout_trained ? 'readout entraîné' : 'readout non entraîné') +
-    (info.readout_looped ? ' · looped dispo' : '') +
-    ` · encodeur ${info.encoder ?? 'classic'} · DN ${info.dn_mode ?? 'all'}`;
+  renderBrainChips(info);
+  document.getElementById('backend-status-text').textContent =
+    info.n_neurons > 100000 ? 'live brain' : 'synthetic brain';
   // Fiche dimorphisme (Cell 2026, Table 1) : chiffres + part des hotspots fru/dsx
   if (info.n_hotspot) {
     const card = document.getElementById('dimorphism-card');
     card.hidden = false;
     card.innerHTML =
-      `♂ <b>${info.n_male_specific.toLocaleString('fr-FR')}</b> male-specific · ` +
-      `◐ <b>${info.n_hotspot.toLocaleString('fr-FR')}</b> hotspots · ` +
-      `fru+ <b>${info.n_fru.toLocaleString('fr-FR')}</b> · ` +
-      `dsx+ <b>${info.n_dsx.toLocaleString('fr-FR')}</b> ` +
-      `<span title="90,4 % des male-specific sont fru+/dsx+ ; les « potentially » restent une catégorie à part">ⓘ</span>`;
+      `♂ <b>${info.n_male_specific.toLocaleString('en-US')}</b> male-specific · ` +
+      `◐ <b>${info.n_hotspot.toLocaleString('en-US')}</b> hotspots · ` +
+      `fru+ <b>${info.n_fru.toLocaleString('en-US')}</b> · ` +
+      `dsx+ <b>${info.n_dsx.toLocaleString('en-US')}</b> ` +
+      `<span title="90.4 % of male-specific neurons are fru+/dsx+; the “potentially” class stays separate">ⓘ</span>`;
   }
 
   // Vraies positions 3D du connectome (retombe sur du hasard si indispo)
   let positions = null, categories = null, edges = null, hotspot = null;
   try {
-    const conn = await api('/api/connectome');
+    const conn = await api('/api/connectome', null, 60000);
     positions = conn.positions;
     categories = conn.category;
     edges = conn.edges;
@@ -386,14 +624,26 @@ async function init() {
     window.CONNECTOME_DATA = { positions, category: categories, edges, hotspot };
   } catch (e) { console.warn('Positions du connectome indisponibles', e); }
 
-  connectome = new ConnectomeView(
-    connCanvas, Math.min(info.n_neurons, positions ? positions.length : 5000),
-    positions, categories, hotspot
-  );
-  if (edges && edges.a) connectome.setEdges(edges);
-  if (connectome._glErrors && connectome._glErrors.length) {
+  try {
+    connectome = new ConnectomeView(
+      connCanvas, Math.min(info.n_neurons, positions ? positions.length : 5000),
+      positions, categories, hotspot
+    );
+  } catch (e) {
+    document.getElementById('gl-status').textContent = '⚠️ ' + e.message;
+    toast('3D brain unavailable: ' + e.message, 'err', 8000);
+    document.getElementById('btn-theater').disabled = true;
+    connectome = null;
+  }
+  if (!connectome) {
+    document.getElementById('btn-live').disabled = true;
+    document.getElementById('btn-sound').disabled = true;
+  }
+  if (edges && edges.a && connectome) connectome.setEdges(edges);
+  if (connectome && connectome._glErrors && connectome._glErrors.length) {
     document.getElementById('gl-status').textContent =
       '⚠️ WebGL : ' + connectome._glErrors[0].slice(0, 120);
+    toast('WebGL warning: ' + connectome._glErrors[0].slice(0, 100), 'err');
   } else {
     document.getElementById('gl-status').textContent = '· WebGL OK';
   }
@@ -405,28 +655,40 @@ async function init() {
   const state = await api('/api/state');
   await refreshState(state);
 
-  document.getElementById('btn-new').onclick = async () => {
-    const d = await api('/api/new', { player_color: 'white' });
+  const bindBusy = (id, fn) => {
+    const btn = document.getElementById(id);
+    btn.onclick = async () => {
+      setBusy(btn, true);
+      try { await fn(); }
+      catch (e) { setStatus(`Error: ${e.message}`); toast(`${id}: ${e.message}`, 'err'); }
+      finally { setBusy(btn, false); }
+    };
+  };
+  bindBusy('btn-new', async () => {
+    await api('/api/new', { player_color: 'white' });
+    renderCandidates(null); // efface les coups de l'ancienne partie
     const s = await api('/api/state');
     await refreshState(s);
-  };
-  document.getElementById('btn-undo').onclick = async () => {
-    const d = await api('/api/undo', {});
+    toast('✨ New game — your move', 'ok', 2200);
+  });
+  bindBusy('btn-undo', async () => {
+    await api('/api/undo', {});
     deselect();
     const s = await api('/api/state');
     await refreshState(s);
-  };
-  document.getElementById('btn-hint').onclick = async () => {
+  });
+  bindBusy('btn-hint', async () => {
     setStatus('The fly is computing a hint…');
     const d = await api('/api/hint');
-    if (d.hint) setStatus(`Hint: ${d.hint}`);
+    if (d.hint) { setStatus(`Hint: ${d.hint}`); toast(`💡 Hint: ${d.hint}`, 'ok'); }
     if (d.scores) renderCandidates(d.scores);
-  };
+  });
   document.getElementById('btn-room-create').onclick = () => wsSend({ type: 'create', fly: true });
   document.getElementById('btn-room-create-h2h').onclick = () => wsSend({ type: 'create', fly: false });
   document.getElementById('btn-room-join').onclick = () => {
     const code = document.getElementById('room-code').value.trim().toUpperCase();
-    if (code) wsSend({ type: 'join', code });
+    if (!/^[A-Z0-9]{4}$/.test(code)) { toast('Room code: 4 letters/digits', 'err'); return; }
+    wsSend({ type: 'join', code });
   };
   document.getElementById('btn-room-leave').onclick = () => {
     wsSend({ type: 'leave' });
@@ -436,7 +698,7 @@ async function init() {
 
   window.addEventListener('resize', () => {
     board3d.resize();
-    connectome.resize();
+    if (connectome) connectome.resize();
   });
 
   // Onglets + Tamagotchi + Labo + WebSocket temps réel
@@ -444,10 +706,12 @@ async function init() {
   document.getElementById('tab-chess').onclick = () => switchTab('chess');
   document.getElementById('tab-lab').onclick = () => switchTab('lab');
   document.getElementById('tab-sigils').onclick = () => switchTab('sigils');
+  document.getElementById('tab-mind').onclick = () => switchTab('mind');
   await PetUI.init();
   // Pas d'await : un /api lent au démarrage ne doit pas retarder le WS
   LabUI.init().catch(e => console.warn('Labo indisponible', e));
   Sigils.init().catch(e => console.warn('Sigils indisponibles', e));
+  if (window.MindUI) MindUI.init().catch(e => console.warn('Mind indisponible', e));
   connectWS();
   if (new URLSearchParams(location.search).has('theater')) Theater.open();
 }
@@ -458,4 +722,5 @@ init().catch(err => {
   setStatus(msg);
   const pm = document.getElementById('pet-message');
   if (pm) pm.textContent = msg;
+  toast(msg, 'err', 8000);
 });

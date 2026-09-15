@@ -113,7 +113,7 @@ class FlyBrain:
             is_descending, dtype=torch.bool, device=self.device
         )
         # Indices des neurones sensoriels, pour disperser le courant d'entrée
-        self._sensory_idx = torch.nonzero(self.is_sensory, as_tuple=False).squeeze(1)
+        self._sensory_idx = torch.where(self.is_sensory)[0]
         self.n_sensory = int(self._sensory_idx.numel())
 
         # Backend natif optionnel (kernel C vérifié bit-exact, CPU uniquement) :
@@ -434,13 +434,15 @@ class FlyBrain:
                 if collect_frames:
                     cols = []
                     for bcol in range(batch_size):
-                        idx = torch.nonzero(spiked[:, bcol], as_tuple=False).squeeze(1)
+                        # torch.where (pas nonzero+squeeze : INTERNAL ASSERT
+                        # multithread connu de nonzero dans cette version torch)
+                        idx = torch.where(spiked[:, bcol])[0]
                         if idx.numel() > 2000:
                             idx = idx[:2000]
                         cols.append(idx.cpu().tolist())
                     frames_all.append(cols)
                 if frame_callback is not None:
-                    idx = torch.nonzero(spiked[:, 0], as_tuple=False).squeeze(1)
+                    idx = torch.where(spiked[:, 0])[0]
                     if idx.numel() > 2000:
                         idx = idx[:2000]
                     frame_callback(idx.cpu().tolist())
@@ -480,7 +482,7 @@ class FlyBrain:
                 motor_history.append(
                     self.spikes[self.is_motor, 0].detach().cpu().numpy()
                 )
-                idx = torch.nonzero(spiked[:, 0], as_tuple=False).squeeze(1)
+                idx = torch.where(spiked[:, 0])[0]
                 if idx.numel() > 2000:
                     idx = idx[:2000]
                 frames.append(idx.cpu().numpy().tolist())

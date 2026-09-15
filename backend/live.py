@@ -153,7 +153,8 @@ class LiveSim:
                         counts[k] += float(sp[tmask].sum().item())
 
                 # 5. Frame : indices des spikes (colonne 0), capped
-                idx = torch.nonzero(self.brain.spikes[:, 0], as_tuple=False).squeeze(1)
+                # (torch.where, pas nonzero+squeeze : INTERNAL ASSERT multithread)
+                idx = torch.where(self.brain.spikes[:, 0])[0]
                 if idx.numel() > MAX_SPIKES_PER_FRAME:
                     idx = idx[:MAX_SPIKES_PER_FRAME]
                 sim_ms = self.steps_per_frame * DT

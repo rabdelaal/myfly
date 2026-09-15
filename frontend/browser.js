@@ -59,7 +59,7 @@ const BrowserMode = {
     PetUI.action = async (action) => this.petAction(action);
     document.getElementById('stat-mood').textContent = this.pet.mood;
     this.syncBoard();
-    setStatus('Mode local : à toi (blancs), la mouche joue les noirs');
+    setStatus('Local mode: your move (white), the fly plays black');
   },
 
   // --- Échecs locaux ---
@@ -173,8 +173,8 @@ const BrowserMode = {
     if (fly && fly.scores) renderCandidates(fly.scores);
     PetUI.state = this.petStatus();
     PetUI.render();
-    if (!currentState.game_over && currentState.turn === 'white') setStatus('À toi — clique une pièce');
-    else if (!currentState.game_over) setStatus('Trait aux noirs…');
+    if (!currentState.game_over && currentState.turn === 'white') setStatus('Your turn — click a piece');
+    else if (!currentState.game_over) setStatus('Black to move…');
     else setStatus('Game over: ' + (currentState.result || '—'));
   },
 
@@ -238,7 +238,7 @@ const BrowserMode = {
     const EFF = {
       feed: { satiety: 30, hygiene: -6, happiness: 6 }, pet: { happiness: 8, energy: -1 },
       clean: { hygiene: 100, happiness: -4 }, courtship: { happiness: 10, energy: -8 },
-      threat: { happiness: -6, energy: -5 },
+      threat: { happiness: -6, energy: -5 }, study: { happiness: 6, energy: -3 },
     };
     const MSG = {
       feed: ['Gloup ! Elle se jette sur le sirop, ailes vibrantes de plaisir 🍯', 'Elle goûte distraitement quelques gouttes…'],
@@ -247,6 +247,7 @@ const BrowserMode = {
       wake: ['Elle s\'étire, déploie ses ailes et bourdonne : prête ! ☀️', 'Elle ouvre un œil… grognonne… mais se lève.'],
       courtship: ['Il déploie une aile et chante : parade nuptiale en cours 🎻🪰', 'Un petit frétillement d\'aile, timide…'],
       threat: ['Il fonce pattes en avant, ailes écartées : intimidation maximale 😠', 'Il fait un pas menaçant puis hésite.'],
+      study: ['Ses yeux composés scannent frénétiquement : elle dévore ce savoir 📚✨', 'Elle parcourt distraitement quelques lignes…'],
     };
     if (act === 'sleep') {
       if (this.pet.sleeping) { msgEl.textContent = 'Elle dort déjà ! 💤'; return; }

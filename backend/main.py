@@ -328,7 +328,12 @@ def reservoir_endpoint(req: ReservoirRequest):
         u = np.asarray(req.series, dtype=np.float32)
         y = np.concatenate([np.zeros(req.horizon), u[:-req.horizon]])
         cut = len(u) // 2
-        r = SigilReservoir(pattern=req.pattern, n=32, washout=20)
+        # Washout adaptatif : le fixe (20) vidait les petites séries
+        # (ex. 20 pts -> 10 prédits - 20 washout = 0 point -> crash).
+        washout = max(5, min(20, cut // 4, (len(u) - cut) // 4))
+        if cut <= washout or len(u) - cut <= washout:
+            raise HTTPException(400, "series trop courte pour ce washout")
+        r = SigilReservoir(pattern=req.pattern, n=32, washout=washout)
         r.fit(u[:cut], y[:cut])
         p = r.predict(u[cut:])
         score = r2(y[cut:], p)
@@ -544,6 +549,8 @@ def state():
         "turn": "white" if board.turn else "black",
         "legal_moves": [m.uci() for m in board.legal_moves],
         "is_game_over": board.is_game_over(),
+        "game_over": board.is_game_over(),  # alias : le frontend lit game_over
+        "result": board.result() if board.is_game_over() else None,
     }
 
 

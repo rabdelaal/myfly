@@ -7,10 +7,18 @@ const Sigils = {
   ctx: null,
 
   async init() {
-    try {
-      this.data = await api('/api/sigils');
-    } catch (e) { console.warn('sigils unavailable', e); return; }
     const sel = document.getElementById('sigil-select');
+    try {
+      this.data = await api('/api/sigils', null, 20000);
+    } catch (e) {
+      console.warn('sigils unavailable', e);
+      sel.innerHTML = '<option>Backend needed</option>';
+      sel.disabled = true;
+      document.getElementById('sigil-metrics').textContent =
+        'Sigil circuits need the backend — 56 topologies, sounds and metrics will appear here.';
+      return;
+    }
+    sel.disabled = false;
     sel.innerHTML = '';
     for (const [name, m] of Object.entries(this.data)) {
       const o = document.createElement('option');
@@ -18,7 +26,7 @@ const Sigils = {
       o.textContent = `${name} (MC ${m.MC})`;
       sel.appendChild(o);
     }
-    sel.value = 'flower';
+    sel.value = this.data.flower ? 'flower' : Object.keys(this.data)[0];
     sel.onchange = () => this.show();
     document.getElementById('btn-sigil-play').onclick = () => this.play();
     document.getElementById('btn-sigil-stop').onclick = () => this.stop();
@@ -29,8 +37,8 @@ const Sigils = {
     const name = document.getElementById('sigil-select').value;
     const m = this.data[name];
     if (!m) return;
-    document.getElementById('sigil-metrics').textContent =
-      `${name}: ${m.edges} edges · ${m.kpas} kpas/s · rate ${m.rate} · ` +
+    document.getElementById('sigil-metrics').innerHTML =
+      `<b>${name}</b>: ${m.edges} edges · ${m.kpas} kpas/s · rate ${m.rate} · ` +
       `burst ${m.burst} · dom ${m.domHz} Hz · MC ${m.MC}`;
     document.getElementById('sigil-gait').textContent = '';
   },
@@ -57,34 +65,51 @@ const Sigils = {
   async play() {
     this.stop();
     const name = document.getElementById('sigil-select').value;
+    if (!this.data[name]) return;
     const evts = this.phrase(name);
-    this.ctx = this.ctx ?? new (window.AudioContext || window.webkitAudioContext)();
-    await this.ctx.resume();
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      await this.ctx.resume();
+    } catch (e) {
+      toast('Audio blocked by the browser — click again', 'err');
+      return;
+    }
     this.playing = true;
     let t = this.ctx.currentTime + 0.05;
     const gait = [];
+    const ctx = this.ctx;
     for (const [i, e] of evts.entries()) {
       if (!this.playing) break;
-      const o = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
       o.type = i % 4 === 0 ? 'triangle' : 'sine';
       o.frequency.value = this.midi2freq(e.pitch);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(e.vel / 127 * 0.4, t + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t + e.dur);
-      o.connect(g).connect(this.ctx.destination);
+      o.connect(g).connect(ctx.destination);
       o.start(t);
       o.stop(t + e.dur + 0.05);
       gait.push(`${e.pitch}`);
       t += e.dur;
     }
     document.getElementById('sigil-gait').textContent = '♪ ' + gait.join(' · ');
-    setTimeout(() => { this.playing = false; }, (t - this.ctx.currentTime) * 1000);
+    const total = Math.max(0, (t - ctx.currentTime) * 1000);
+    setTimeout(() => {
+      this.playing = false;
+      if (this.ctx === ctx) this.stop();
+    }, total + 150);
   },
 
   stop() {
     this.playing = false;
-    if (this.ctx) this.ctx.close().catch(() => {});
-    this.ctx = null;
+    document.getElementById('sigil-gait').textContent = '';
+    if (this.ctx) {
+      const c = this.ctx;
+      this.ctx = null;
+      c.close().catch(() => {});
+    }
   },
 };
+
+window.Sigils = Sigils;
