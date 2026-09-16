@@ -27,7 +27,7 @@ from tqdm import tqdm
 from data_loader import load_connectome, _synthetic_connectome, dn_maxflow_mask
 from brain import FlyBrain
 from encoding import BoardEncoder, ModalBoardEncoder
-from readout_looped import LoopedReadout, trajectory_from_brain, save_looped
+from readout_looped import LoopedReadout, trajectory_from_brain, save_looped, load_looped
 from train_readout import make_val_set
 
 
@@ -82,6 +82,8 @@ def main():
     p.add_argument("--batch-size", type=int, default=8,
                    help="positions par run connectome (B) : ~4x plus vite à 8")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--resume-from", type=str, default=None,
+                    help="checkpoint looped (.pt) : reprend poids + baseline au lieu de partir de zéro")
     args = p.parse_args()
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -136,6 +138,12 @@ def main():
     n_motor = int(conn["is_motor"].sum())
     n_desc = int(dn_idx.sum()) if dn_idx is not None else int(conn["is_descending"].sum())
     dec = LoopedReadout(n_motor + n_desc, d_h=args.d_h, window=args.window).to(brain.device)
+    if args.resume_from:
+        warm, wmeta = load_looped(args.resume_from, brain.device)
+        if int(wmeta["d_in"]) != n_motor + n_desc:
+            raise SystemExit(f"[looped-train] --resume-from incompatible (d_in {wmeta['d_in']} vs {n_motor + n_desc})")
+        dec.load_state_dict(warm.state_dict())
+        print(f"[looped-train] reprise depuis {args.resume_from} (rho de départ à mesurer en validation)")
     opt = torch.optim.Adam(dec.parameters(), lr=args.lr)
 
     best_val, best_path, total, losses = -1.0, args.output + ".best", 0, []
