@@ -143,18 +143,19 @@ class FlyBrain:
         self._native_alpha16 = None
         if (self.device == "cpu" and synapse_model == "alpha"):
             try:
-                from native_lif_alpha import NativeLIFAlpha, csc_from_csr, csc16_from_csr
+                from native_lif_alpha import NativeLIFAlpha, csc_from_csr
                 self._native_alpha = NativeLIFAlpha()
                 self._csc_colptr, self._csc_row, self._csc_data = \
                     csc_from_csr(W, self.n)
+                # Le path torch multiplie les poids par weight_scale : le CSC
+                # natif doit porter la même échelle (sinon réseau ~16× trop
+                # faible, silencieux). ponytail: pas de variante int16 ici —
+                # W est normalisé (flottants ~0.05), round() en int16 zérote
+                # 99 % des synapses ; réactiver seulement sur poids bruts entiers.
+                if self.weight_scale != 1.0:
+                    self._csc_data = (self._csc_data * np.float32(self.weight_scale)).astype(np.float32)
                 self._csc_nnz = int(self._csc_data.shape[0])
-                # Variante int16 : 2× moins de trafic mémoire, bit-exact car les
-                # poids MaleCNS sont des entiers exacts.
-                try:
-                    self._csc16_data = csc16_from_csr(W, self.n)[2]
-                    self._native_alpha16 = self._native_alpha
-                except Exception:
-                    self._csc16_data = None
+                self._csc16_data = None
             except Exception as e:
                 print(f"[brain] backend natif α indisponible ({e}), repli torch.")
                 self._native_alpha = None

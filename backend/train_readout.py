@@ -9,6 +9,7 @@ dopamine. Récompense = score Stockfish de la position.
 Usage : python train_readout.py --episodes 200
 """
 import argparse
+import os
 import shutil
 import time
 from pathlib import Path
@@ -67,6 +68,16 @@ def main():
                         help="pas de simulation LIF par position "
                              "(réduire sur le vrai MaleCNS : ~73 ms/pas)")
     args = parser.parse_args()
+
+    # Garde-fou « jamais de train long » : ~5 s/position sur MaleCNS (mesuré).
+    # Au-delà du budget, refus sauf opt-in explicite.
+    budget = int(os.environ.get("FLY_TRAIN_BUDGET", "120"))
+    if args.episodes * args.max_moves > budget \
+            and os.environ.get("FLY_ALLOW_LONG_TRAIN") != "1":
+        raise SystemExit(
+            f"[train] refusé : {args.episodes * args.max_moves} positions "
+            f"> budget {budget}. Opt-in : FLY_ALLOW_LONG_TRAIN=1, ou "
+            f"FLY_TRAIN_BUDGET=N.")
 
     print("[train] Chargement du connectome...")
     conn = load_connectome()

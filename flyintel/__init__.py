@@ -126,7 +126,7 @@ def load_readout_module(path: str, brain, conn, encoder_name: str = "classic",
     n_desc = int(dn_idx.sum()) if dn_idx is not None else int(conn["is_descending"].sum())
 
     blob = torch.load(path, map_location=device, weights_only=True)
-    if "state_dict" in blob and "cell" in blob["state_dict"]:
+    if "state_dict" in blob and any(k.startswith("cell.") for k in blob["state_dict"]):
         model, meta = load_looped(path, device)
         if dn_idx is not None:
             meta["dn_idx"] = dn_idx

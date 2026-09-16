@@ -14,6 +14,7 @@ Critère d'abandon : rho < 0,2 avec trajectoire + canaux modaux -> le goulot est
 la simulation LIF, pas le décodeur (cf. rapport B2/risque 1).
 """
 import argparse
+import os
 import shutil
 import time
 from pathlib import Path
@@ -84,6 +85,16 @@ def main():
     args = p.parse_args()
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
+
+    # Garde-fou « jamais de train long » : ~5 s/position sur MaleCNS (mesuré).
+    # Au-delà du budget, refus sauf opt-in explicite (le --dry-run passe toujours).
+    budget = int(os.environ.get("FLY_TRAIN_BUDGET", "120"))
+    if not args.dry_run and args.episodes * args.max_moves > budget \
+            and os.environ.get("FLY_ALLOW_LONG_TRAIN") != "1":
+        raise SystemExit(
+            f"[looped-train] refusé : {args.episodes * args.max_moves} positions "
+            f"> budget {budget}. Opt-in : FLY_ALLOW_LONG_TRAIN=1, ou "
+            f"FLY_TRAIN_BUDGET=N, ou --dry-run pour la fumée.")
 
     if args.dry_run:
         conn = _synthetic_connectome(n_neurons=1500, sparsity=0.008)

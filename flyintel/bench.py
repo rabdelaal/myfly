@@ -49,16 +49,23 @@ def chess_reflex(brain, conn, readout=None, encoder=None, val_boards=None,
         targets = [float(np.random.default_rng(7).normal()) for _ in val_boards]
     with torch.no_grad():
         currents = encoder.encode_batch(val_boards).to(brain.device)
-        r = brain.run(currents, n_steps=steps, record_every=10,
-                      return_history=True)
-        from readout_looped import trajectory_from_brain
-        traj = trajectory_from_brain(r)
-        readout.observe(traj.reshape(-1, traj.shape[-1]))
-        preds = readout(traj)[-1].cpu().tolist()
+        if hasattr(readout, "cell"):  # LoopedReadout : trajectoire temporelle
+            r = brain.run(currents, n_steps=steps, record_every=10,
+                          return_history=True)
+            from readout_looped import trajectory_from_brain
+            traj = trajectory_from_brain(r)
+            readout.observe(traj.reshape(-1, traj.shape[-1]))
+            preds = readout(traj)[-1].cpu().tolist()
+            kind = "looped"
+        else:  # LinearReadout : moyennes motrices + descendantes
+            r = brain.run(currents, n_steps=steps, record_every=10)
+            readout.observe(torch.cat([r["motor_mean"], r["descending_last"]], dim=-1))
+            preds = readout(r["motor_mean"], r["descending_last"]).cpu().tolist()
+            kind = "linear"
     if len(set(np.round(preds, 6))) < 3:
-        return {"score": None, "detail": "readout output degenerate"}
+        return {"score": None, "detail": f"readout output degenerate ({kind})"}
     rho = float(spearmanr(targets, preds).correlation)
-    return {"score": rho, "detail": f"rho vs {len(targets)} stockfish targets"}
+    return {"score": rho, "detail": f"rho vs {len(targets)} stockfish targets ({kind})"}
 
 
 # --------------------------------------------------------------------------
@@ -113,9 +120,10 @@ def discrimination(brain, conn, stimuli=("feed", "pet", "clean", "threat"),
         for j in range(i + 1, len(stimuli)):
             sep += float(np.linalg.norm(patterns[i] - patterns[j]))
     sep /= (len(stimuli) * (len(stimuli) - 1) / 2)
-    ratio = float(sep / (spread + 1e-9))
-    # log1p : la dynamique brute (10⁸ sur le synthétique, ~1-10 sur MaleCNS)
-    # est trop étalée pour un leaderboard. log1p la tasse en restant monotone.
+    # Plancher de bruit à 10 % de sep : cerveau déterministe (spread≈0) plafonné
+    # à log1p(10)≈2.4 au lieu d'exploser (ex. 19.2 sur synthétique).
+    ratio = float(sep / (spread + 0.1 * sep + 1e-9))
+    # log1p : tasse le ratio en restant monotone (ratio ≤ 10, score ≤ 2.4).
     score = float(np.log1p(ratio))
     return {"score": score, "detail": f"log1p(inter/intra {ratio:.1f}) over {len(stimuli)} stimuli"}
 
@@ -137,6 +145,8 @@ def dynamics(brain, conn, steps=300) -> dict:
     n_m = max(int(brain.is_motor.sum()), 1)
     sensor_hz = sensor_hz / n_s / (steps / 1000.0)
     motor_hz = motor_hz / n_m / (steps / 1000.0)
+    if peak == 0:
+        return {"score": 0.0, "detail": f"silent: sensory {sensor_hz:.1f} Hz · motor {motor_hz:.1f} Hz · peak {peak}"}
     # Score composite borné : on veut un cerveau vivant mais pas en avalanche.
     # Saine ≈ taux sensoriel modéré, moteur < sensoriel, peak raisonnable.
     sane = float(min(1.0, motor_hz / max(sensor_hz * 1.1, 1e-3)))
