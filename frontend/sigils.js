@@ -9,7 +9,10 @@ const Sigils = {
   async init() {
     const sel = document.getElementById('sigil-select');
     try {
-      this.data = await api('/api/sigils', null, 20000);
+      this.data = window.SIGIL_DATA || {};
+      try { this.data = await api('/api/sigils', null, 12000); }
+      catch (e2) { console.warn('sigils backend unavailable, using embedded snapshot', e2); }
+      if (!Object.keys(this.data).length) throw new Error('sigils unavailable');
     } catch (e) {
       console.warn('sigils unavailable', e);
       sel.innerHTML = '<option>Backend needed</option>';

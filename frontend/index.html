@@ -7,9 +7,7 @@
   <meta name="description" content="FlyChess — a living fruit-fly brain (MaleCNS) that plays chess. Raise it, lesion it, listen to it." />
   <title>FlyChess — Raise your fly</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cellipse cx='11' cy='17' rx='9' ry='3.4' fill='%234de3ff' opacity='0.55' transform='rotate(-24 11 17)'/%3E%3Cellipse cx='29' cy='17' rx='9' ry='3.4' fill='%234de3ff' opacity='0.55' transform='rotate(24 29 17)'/%3E%3Cellipse cx='20' cy='24' rx='5.5' ry='8' fill='%233a3a52' stroke='%238b7bff' stroke-width='1.4'/%3E%3Ccircle cx='17.6' cy='17.5' r='2.6' fill='%23c0392b'/%3E%3Ccircle cx='22.4' cy='17.5' r='2.6' fill='%23c0392b'/%3E%3C/svg%3E" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="fonts.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -228,9 +226,16 @@
     <div id="theater-caption"></div>
   </div>
 
-  <!-- UMD builds only (classic scripts, no ESM): chess.js 0.10.3 + three 0.149.0 -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.min.js"></script>
+  <!-- Libs locales d'abord (offline-first), repli CDN si absentes -->
+  <script>
+    function __cdnFallback(el, url) {
+      var s = document.createElement('script');
+      s.src = url;
+      el.replaceWith(s);
+    }
+  </script>
+  <script src="vendor/three.min.js" onerror="__cdnFallback(this, 'https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js')"></script>
+  <script src="vendor/chess.min.js" onerror="__cdnFallback(this, 'https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.min.js')"></script>
   <script>
     window.FLY_API = new URLSearchParams(location.search).get('api')
       ?? window.FLY_API ?? 'http://localhost:8000';
@@ -240,6 +245,7 @@
   <script src="pet.js"></script>
   <script src="theater.js"></script>
   <script src="lab.js"></script>
+  <script src="sigils-data.js"></script>
   <script src="sigils.js"></script>
   <script src="mind.js"></script>
   <script src="spear.js"></script>

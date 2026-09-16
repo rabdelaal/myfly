@@ -1,4 +1,14 @@
 // 📚 Mind tab: teach the fly (learn), search its memory, browse knowledge.
+const MIND_KEY = 'myfly-mind-journal-v1';
+function mindLocal() {
+  try { return JSON.parse(localStorage.getItem(MIND_KEY)) || []; }
+  catch (e) { return []; }
+}
+function mindSaveLocal(it) {
+  const a = mindLocal();
+  a.unshift(it);
+  try { localStorage.setItem(MIND_KEY, JSON.stringify(a.slice(0, 50))); } catch (e) {}
+}
 const MindUI = {
   async init() {
     document.getElementById('btn-learn').onclick = () => this.learn();
@@ -19,8 +29,11 @@ const MindUI = {
       const r = await api('/api/knowledge', null, 20000);
       items = r.items || [];
     } catch (e) {
-      el.innerHTML = '<span class="empty-note">Knowledge needs the backend.</span>';
-      return;
+      items = mindLocal();
+      if (!items.length) {
+        el.innerHTML = '<span class="empty-note">Knowledge needs the backend. Local journal is empty.</span>';
+        return;
+      }
     }
     if (!items.length) {
       el.innerHTML = '<span class="empty-note">Nothing learned yet — teach it above.</span>';
@@ -45,7 +58,10 @@ const MindUI = {
       await this.refresh();
       if (window.PetUI) await PetUI.refresh();
     } catch (e) {
-      toast(`Learn failed: ${e.message}`, 'err');
+      mindSaveLocal({ title: q, source: 'local', excerpt: 'Saved locally; backend learn unavailable.', mtime: Date.now() / 1000 });
+      toast(`Saved locally: ${q}`, 'ok');
+      input.value = '';
+      await this.refresh();
     } finally {
       setBusy(btn, false);
     }
@@ -71,7 +87,22 @@ const MindUI = {
         ).join('');
       }
     } catch (e) {
-      box.innerHTML = `<span class="empty-note">Recall failed: ${escapeHtml(e.message)}</span>`;
+      const toks = q.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+      const hits = mindLocal().map(it => {
+        const t = ((it.title || '') + ' ' + (it.excerpt || '')).toLowerCase();
+        let o = 0;
+        for (const w of toks) if (t.includes(w)) o++;
+        return { title: it.title, excerpt: it.excerpt, overlap: o, source: it.source };
+      }).filter(x => x.overlap > 0).sort((a, b) => b.overlap - a.overlap).slice(0, 3);
+      if (!hits.length) {
+        box.innerHTML = '<span class="empty-note">No local memory of that yet — teach it first.</span>';
+      } else {
+        box.innerHTML = hits.map(it =>
+          `<div class="mind-card"><h4>${escapeHtml(it.title)}</h4>` +
+          `<p>${escapeHtml((it.excerpt || '').slice(0, 220))}</p>` +
+          `<div class="src">local overlap ${it.overlap}</div></div>`
+        ).join('');
+      }
     } finally {
       setBusy(btn, false);
     }

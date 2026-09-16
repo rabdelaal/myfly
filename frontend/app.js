@@ -487,6 +487,7 @@ function playFrames(frames) {
     }
     connectome.setActivation(frames[i]);
     if (n) n.textContent = frames[i].length;
+    playSpikeSound(frames[i].length); // Geiger local : marche aussi sur les frames du worker (mode local)
     i++;
   }, 26);
 }
@@ -549,7 +550,20 @@ function countUp(el, target, dur = 900) {
   requestAnimationFrame(tick);
 }
 
+async function waitForLibs() {
+  // Les fallbacks CDN sont async : attendre THREE + Chess (8 s max),
+  // sinon message fatal explicite au lieu d'un écran vide.
+  const t0 = Date.now();
+  while (!(window.THREE && window.Chess)) {
+    if (Date.now() - t0 > 8000) {
+      throw new Error('3D/chess libraries failed to load (offline? vendor/ missing?)');
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+}
+
 async function init() {
+  await waitForLibs();
   // Choisir l'onglet AVANT de créer les canvas (un canvas dans un onglet
   // masqué a clientWidth = 0 et ne se dessine jamais)
   const params = new URLSearchParams(location.search);
@@ -577,6 +591,11 @@ async function init() {
     if (typeof BrowserMode !== 'undefined' && typeof Chess !== 'undefined') {
       setBackendPill('local', 'local demo brain');
       await BrowserMode.start({ connCanvas });
+      // Même en local : les onglets Labo/Sigils/Mind ont leurs replis locaux
+      // (sinon ils restent vides sur GitHub Pages — init() faisait return avant).
+      LabUI.init().catch(e => console.warn('Labo indisponible', e));
+      Sigils.init().catch(e => console.warn('Sigils indisponibles', e));
+      if (window.MindUI) MindUI.init().catch(e => console.warn('Mind indisponible', e));
       return;
     }
     setBackendPill('offline', 'no backend');
