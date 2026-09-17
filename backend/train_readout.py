@@ -34,7 +34,9 @@ def make_val_set(n_positions: int, seed: int = 77):
         for _ in range(rng.integers(1, 30)):
             if b.is_game_over():
                 break
-            b.push(np.random.choice(list(b.legal_moves)))
+            # Tirage via rng seedé (pas np.random global) : même seed → mêmes positions.
+            moves = list(b.legal_moves)
+            b.push(moves[int(rng.integers(len(moves)))])
         boards.append(b)
     return boards
 

@@ -76,6 +76,12 @@ def main():
                 if Path(sf).exists() or sf == "stockfish":
                     try:
                         stockfish = chess.engine.SimpleEngine.popen_uci(sf)
+                        # 1 thread : recherche à profondeur fixe déterministe →
+                        # cibles stables run-to-run (le bench fige déjà les tirages Poisson).
+                        try:
+                            stockfish.configure({"Threads": 1})
+                        except Exception:
+                            pass
                         break
                     except Exception:
                         stockfish = None

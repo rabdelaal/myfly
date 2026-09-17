@@ -35,9 +35,30 @@ from .backends import benchmark_backends, gelu_fast, tanh_fast
 LEADERBOARD_PATH = Path(__file__).resolve().parent.parent / "benchmarks" / "leaderboard.json"
 
 
+def _deterministic(fn):
+    """Tirages Poisson du cerveau figés pendant un domaine : même seed → mêmes
+    trajectoires, leaderboard comparable run-to-run. État RNG restauré après
+    (aucun effet sur l'appelant ni sur le jeu prod, non décoré)."""
+    import functools
+
+    @functools.wraps(fn)
+    def w(*a, **k):
+        g = torch.get_rng_state()
+        cg = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+        torch.manual_seed(0)
+        try:
+            return fn(*a, **k)
+        finally:
+            torch.set_rng_state(g)
+            if cg is not None:
+                torch.cuda.set_rng_state_all(cg)
+    return w
+
+
 # --------------------------------------------------------------------------
 # Domain: chess reflex — does a trained readout rank moves like stockfish?
 # --------------------------------------------------------------------------
+@_deterministic
 def chess_reflex(brain, conn, readout=None, encoder=None, val_boards=None,
                  targets=None, steps=100) -> dict:
     """rho de Spearman entre les scores du readout et des cibles (stockfish).
@@ -71,6 +92,7 @@ def chess_reflex(brain, conn, readout=None, encoder=None, val_boards=None,
 # --------------------------------------------------------------------------
 # Domain: feeding reflex (Shiu) — MN9 rate under sugar-GRN Poisson drive
 # --------------------------------------------------------------------------
+@_deterministic
 def feeding(brain, conn, drive_hz=100.0, ms=200) -> dict:
     mn9 = conn.get("mn9_idx")
     if mn9 is None or len(mn9) == 0:
@@ -90,6 +112,7 @@ def feeding(brain, conn, drive_hz=100.0, ms=200) -> dict:
 # --------------------------------------------------------------------------
 # Domain: discrimination — can motor readout separate distinct stimuli?
 # --------------------------------------------------------------------------
+@_deterministic
 def discrimination(brain, conn, stimuli=("feed", "pet", "clean", "threat"),
                    steps=100) -> dict:
     """One-vs-rest separability of the motor response to different action
@@ -170,6 +193,7 @@ METAPHOR_PROBE = (
 )
 
 
+@_deterministic
 def metaphor(brain, conn, readout=None, encoder=None, steps=100) -> dict:
     from encoding import AnythingEncoder
     enc = encoder if isinstance(encoder, AnythingEncoder) else AnythingEncoder(
@@ -199,6 +223,7 @@ def metaphor(brain, conn, readout=None, encoder=None, steps=100) -> dict:
 # la bonne réponse vient du REPLAY du code, le piège naïf compte les
 # enregistrements invalides. v0 : options seules encodées (pas l'historique).
 # --------------------------------------------------------------------------
+@_deterministic
 def ie_state(brain, conn, readout=None, encoder=None, steps=100) -> dict:
     from encoding import AnythingEncoder
     from ie_worlds import LedgerWorld
