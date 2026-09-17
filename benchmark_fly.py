@@ -29,6 +29,8 @@ def main():
                    help="force le connectome synthetique (demo)")
     p.add_argument("--tag", default="run", help="etiquette leaderboard")
     p.add_argument("--list", action="store_true", help="affiche le leaderboard")
+    p.add_argument("--judge", action="store_true",
+                   help="annote les entrées via TypeSafe (clé requise, 1 appel/entrée)")
     args = p.parse_args()
 
     if args.list:
@@ -37,6 +39,23 @@ def main():
             print(bench.summary(lb))
         else:
             print("pas de leaderboard (lancer un benchmark d'abord)")
+            return
+        if args.judge:
+            sys.path.insert(0, str(Path(__file__).resolve().parent / "backend"))
+            try:
+                from typesafe_judge import judge_bench_entry
+            except Exception as e:
+                print(f"[juge] indisponible ({e})")
+                return
+            for entry in lb:
+                try:
+                    r = judge_bench_entry(entry)
+                    a = r["answers"]
+                    print(f"[{entry.get('tag')}] {a['overall_health']['choice']} "
+                          f"(conf {a['overall_health']['confidence']:.2f}) "
+                          f"attention={a['needs_attention']['noul']:.2f}")
+                except Exception as e:
+                    print(f"[{entry.get('tag')}] juge indisponible ({e})")
         return
 
     print(f"[flyintel] device={flyintel.default_device()} malecns={flyintel.has_malecns()}")

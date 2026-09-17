@@ -66,7 +66,11 @@ def care_questions() -> dict:
         },
         "is_critical": {
             "type": "noul",
-            "instructions": "Is the fly in a critical state needing immediate care?",
+            "instructions": "Does the fly need care right now (not later today)?",
+            "criteria": {
+                "true": "any stat at or near zero (<=15/100), or several stats low at once",
+                "false": "all stats comfortably above 15, routine care suffices",
+            },
         },
         "mood": {
             "type": "score",
@@ -112,9 +116,9 @@ def judge_bench_entry(entry: dict) -> dict:
             "type": "choice",
             "instructions": "Given these benchmark domains of a simulated fly-brain connectome, what is the overall health of this run?",
             "criteria": {
-                "healthy": "key domains report plausible values, no errors, no silent brain",
-                "degraded": "works but a domain looks off (silent network, degenerate readout, suspicious score)",
-                "broken": "errors, missing readouts, or numbers that indicate a dead/misconfigured simulation",
+                "healthy": "key domains report plausible values, no errors",
+                "degraded": "works but something is off: silent network, missing optional readout, suspicious score",
+                "broken": "errors, dead simulation despite drive, or degenerate outputs everywhere",
             },
         },
         "needs_attention": {
@@ -160,3 +164,134 @@ def rank_options(topic: str, options: dict[str, str], evidence: str = "") -> dic
             "criteria": options,
         },
     })
+
+
+# ---------------------------------------------------------------------------
+# Phases 1-3 : briques produit. Règles : 1 appel batché par fonction, jamais
+# dans les chemins chauds, seuils calibrés ci-dessous (phase 1, voir rapport).
+# ---------------------------------------------------------------------------
+
+TS_KEEP_THRESHOLD = 0.5        # note gardée si keep >= seuil (calibré : Jev ne garde
+                               # que le spécifique fly-brain, le générique échecs/tech est droppé)
+TS_ESCALATE_CONFIDENCE = 0.6   # sous ce seuil -> vérificateur cher (stockfish depth 12)
+
+
+def commentate_move(fen: str, move_uci: str, cp_before: float, cp_after: float,
+                    timeout: int = 20) -> dict:
+    """Commentaire d'un coup (1 appel batché). Ajoute needs_escalation
+    (confiance < TS_ESCALATE_CONFIDENCE) et un texte FR templatisé."""
+    res = evaluate({"fen": fen, "move": move_uci, "cp_before": cp_before,
+                    "cp_after": cp_after}, {
+        "is_blunder": {
+            "type": "noul",
+            "instructions": "Does this move blunder (cp drop of roughly 150 or more)?",
+        },
+        "sharpness": {
+            "type": "score",
+            "instructions": "How sharp is the resulting position?",
+            "criteria": ["calm", "tense", "wild"],
+        },
+        "style": {
+            "type": "choice",
+            "instructions": "What style is this move?",
+            "criteria": {"tactical": "sacrifice, capture, check, forcing sequence",
+                         "positional": "quiet improvement, prophylaxis, maneuvering",
+                         "defensive": "parries a threat, consolidates, retreats"},
+        },
+    }, timeout=timeout)
+    a = res["answers"]
+    res["needs_escalation"] = min(a["sharpness"]["confidence"],
+                                  a["style"]["confidence"]) < TS_ESCALATE_CONFIDENCE
+    res["commentary_fr"] = format_commentary(a)
+    return res
+
+
+def format_commentary(a: dict) -> str:
+    """Template FR pur (zéro réseau) depuis les jugements d'un coup."""
+    bl = a["is_blunder"]["noul"]
+    sh = a["sharpness"]["score"]
+    st = a["style"]["choice"]
+    bits = ["Gaffe (%.2f)." % bl if bl > 0.5 else "Coup propre (%.2f)." % (1 - bl),
+            "Position " + ("calme." if sh < 0.7 else "tendue." if sh < 1.4 else "sauvage."),
+            {"tactical": "Esprit tactique.",
+             "positional": "Esprit positionnel.",
+             "defensive": "D'abord parer."}[st]]
+    return " ".join(bits)
+
+
+def route_query(query: str, n_notes: int, timeout: int = 15) -> dict:
+    """Répondre depuis knowledge ou chercher le web ? (1 appel)."""
+    return evaluate({"query": query, "notes_available": n_notes}, {
+        "source": {
+            "type": "choice",
+            "instructions": "Where should this question be answered from?",
+            "criteria": {"knowledge": f"the {n_notes} learned notes likely cover it",
+                         "web": "needs fresh or external information"},
+        },
+    })
+
+
+def detect_theater_event(stats: dict, timeout: int = 15) -> dict:
+    """Le flux live vaut-il une réaction caméra/lumière ? stats: {spike_hz,
+    motor_hz, burst_peak, silent_s}. Downsampler côté appelant (1/10 s max)."""
+    return evaluate(stats, {
+        "interesting": {
+            "type": "noul",
+            "instructions": "Is something worth reacting to happening in this brain-activity snapshot?",
+        },
+        "event": {
+            "type": "choice",
+            "instructions": "What kind of moment is this?",
+            "criteria": {"burst": "sudden spike surge",
+                         "silence": "activity died out",
+                         "rally": "sustained motor recruitment",
+                         "nothing": "business as usual"},
+        },
+    })
+
+
+def route_intent(text: str, timeout: int = 15) -> dict:
+    """Porte d'entrée langage naturel v1 : handler + confiance (1 appel).
+    L'exécution reste côté appelant (pas d'effet de bord ici)."""
+    return evaluate({"request": text}, {
+        "handler": {
+            "type": "choice",
+            "instructions": "Which subsystem should handle this request?",
+            "criteria": {"pet": "feed, pet, clean, sleep, wake, mood, care actions",
+                         "chess": "play, move, board, game, position",
+                         "theater": "watch, show, brain, live stream, display",
+                         "lab": "lesion, heal, experiment, reflex test",
+                         "learn": "search, learn, remember, knowledge questions"},
+        },
+    })
+
+
+def personality_scores(summary: str, timeout: int = 15) -> dict:
+    """Personnalité depuis un résumé d'historique (1 appel, 2 scores).
+    L'appelant mappe vers température/gains (jamais ici)."""
+    return evaluate({"recent_history": summary}, {
+        "boldness": {
+            "type": "score",
+            "instructions": "How bold is the fly behaving?",
+            "criteria": ["timid", "balanced", "reckless"],
+        },
+        "sociability": {
+            "type": "score",
+            "instructions": "How much does the fly seek interaction?",
+            "criteria": ["withdrawn", "neutral", "attention-seeking"],
+        },
+    })
+
+
+def check_citations(pairs: list[tuple[str, str]], timeout: int = 20) -> dict:
+    """Chaque affirmation est-elle soutenue par son extrait ? (1 appel batché,
+    1 question Noul par paire ; sens complet dans la question)."""
+    qs = {}
+    for i, (claim, excerpt) in enumerate(pairs):
+        qs[f"supported_{i}"] = {
+            "type": "noul",
+            "instructions": f"Is this claim supported by the excerpt? Claim: '{claim}'",
+            "criteria": {"true": "excerpt states or directly implies it",
+                         "false": "not present or contradicted"},
+        }
+    return evaluate([{"excerpt": ex[:600]} for _, ex in pairs], qs)
