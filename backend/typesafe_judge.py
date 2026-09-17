@@ -53,20 +53,16 @@ def evaluate(state, questions: dict, model: str = MODEL,
     raise last  # type: ignore[misc]
 
 
-if __name__ == "__main__":
-    # Démo opt-in (1 seul appel, 3 questions indépendantes batchées) :
-    # triage de l'état Tamagotchi -> action de soin.
-    demo_state = {"satiety": 0.15, "mood": 0.3, "energy": 0.6,
-                  "cleanliness": 0.8, "asleep": False,
-                  "note": "hasn't eaten in 6 hours, keeps missing the food"}
-    res = evaluate(demo_state, {
+def care_questions() -> dict:
+    """Questions de triage Tamagotchi (pures, testables sans réseau)."""
+    return {
         "care_action": {
             "type": "choice",
             "instructions": "Which single care action does the fly need most?",
             "criteria": {"feed": "hungry or low satiety",
-                         "pet": "low mood, needs comfort",
-                         "clean": "dirty",
-                         "sleep": "exhausted or already asleep"},
+                         "pet": "low happiness, needs comfort",
+                         "clean": "low hygiene, dirty",
+                         "sleep": "low energy, exhausted, or already asleep"},
         },
         "is_critical": {
             "type": "noul",
@@ -77,7 +73,25 @@ if __name__ == "__main__":
             "instructions": "How good is the fly's mood?",
             "criteria": ["miserable", "okay", "happy"],
         },
-    })
+    }
+
+
+def advise_care(stats: dict, sleeping: bool, timeout: int = 15) -> dict:
+    """Triage de l'état Tamagotchi (1 appel batché). stats: {satiety,
+    happiness, energy, hygiene}. Lève TypeSafeError sans clé/réseau."""
+    return evaluate({"stats": stats, "sleeping": bool(sleeping)},
+                    care_questions(), timeout=timeout)
+
+
+if __name__ == "__main__":
+    # Démo opt-in (1 seul appel, 3 questions indépendantes batchées) :
+    # triage de l'état Tamagotchi -> action de soin.
+    demo_state = {"satiety": 0.15, "mood": 0.3, "energy": 0.6,
+                  "cleanliness": 0.8, "asleep": False,
+                  "note": "hasn't eaten in 6 hours, keeps missing the food"}
+    res = advise_care({k: demo_state.get(k, 0.5) for k in
+                       ("satiety", "happiness", "energy", "hygiene")},
+                      demo_state.get("asleep", False))
     print(json.dumps(res, indent=2))
 
 

@@ -252,6 +252,48 @@ def pet_action(req: PetActionRequest):
     return {**reaction, "pet": STATE["pet"].status()}
 
 
+# Stat la plus basse -> action (repli sans réseau ; seuils en unités 0-100).
+_RULE_ACTION = (("satiety", "feed"), ("hygiene", "clean"),
+                ("happiness", "pet"), ("energy", "sleep"))
+
+
+def rule_advice(stats: dict, sleeping: bool) -> dict:
+    """Conseil de soin déterministe : dormir si endormie, sinon soigner
+    la stat la plus basse ; critique si une stat < 15."""
+    if sleeping:
+        return {"action": "sleep", "critical": False, "confidence": None}
+    worst = min(_RULE_ACTION, key=lambda kv: float(stats.get(kv[0], 100.0)))
+    return {"action": worst[1],
+            "critical": bool(float(stats.get(worst[0], 100.0)) < 15.0),
+            "confidence": None}
+
+
+@app.get("/api/pet/advice")
+def pet_advice():
+    """Conseil de soin (lecture seule, jamais d'effet de bord).
+    TypeSafe si FLY_TS_ADVICE=1 (1 appel batché, timeout court), sinon repli
+    règle. Sans clé/réseau : repli règle avec mention explicite."""
+    pet = STATE["pet"]
+    if pet is None:
+        raise HTTPException(503, "cerveau non chargé")
+    st = pet.status()
+    stats, sleeping = st["stats"], st["sleeping"]
+    if os.environ.get("FLY_TS_ADVICE") == "1":
+        try:
+            from typesafe_judge import advise_care
+            r = advise_care(stats, sleeping, timeout=15)
+            a = r["answers"]
+            return {"action": a["care_action"]["choice"],
+                    "critical": bool(a["is_critical"]["noul"] > 0.5),
+                    "confidence": round(float(a["care_action"]["confidence"]), 3),
+                    "mood_score": round(float(a["mood"]["score"]), 2),
+                    "source": "typesafe", "usage": r.get("usage")}
+        except Exception as e:
+            return {**rule_advice(stats, sleeping), "source": "rule",
+                    "detail": f"typesafe indisponible ({e})"}
+    return {**rule_advice(stats, sleeping), "source": "rule"}
+
+
 # --- 📚 Apprentissage web (le modèle apprend de nouvelles données à chaud) ---
 
 _learn_lock = threading.Lock()
