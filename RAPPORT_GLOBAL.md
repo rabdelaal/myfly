@@ -68,6 +68,12 @@ OTOC N=10 / SFF β>0.
 ## 4. Prochaines actions recommandées (ordre)
 1. Laisser finir le teacher → re-benchmark → Phase 1 essaim (fil rouge).
 2. Cron de veille + digest (1 h, produit immédiat).
-3. Bench int16 sur CPU libre (chiffre manquant).
+3. Bench int16 ABANDONNÉ (zérote 99 % des poids normalisés) → remplacé par : eval rho n=25–50 + tirages moyennés (voir addendum).
+
+## Addendum 16/09/2026
+- Natif α vivant : 1,7 ms/pas (×33 vs torch 56) ; int16 abandonnée.
+- Bench déterministe run-to-run ; référence rho looped ≈ −0,1 stable (3×15).
+- Teacher mort à 160/200 (~14 h), non relancé : politique « jamais de train long » (budget 120 positions, `FLY_ALLOW_LONG_TRAIN=1`), `--resume-from` dispo, probe 120 pos = 1,1 min.
+- `verify_vs_torch` : 299/300 sur cet env (torch 2.9.1 vs pin 2.5.0, à re-mesurer).
 4. Codex multi-seeds + MC held-out (crédibilité).
 5. Encodeur par tour → ie_state devient un vrai test d'ordre.

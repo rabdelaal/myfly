@@ -310,6 +310,12 @@ docker-compose up --build
 # Backend : http://localhost:8000
 ```
 
+## Mise à jour 16/09/2026 — backend natif α réparé
+
+- Le CSC natif ignorait `weight_scale` (×15,8 manquant) et la variante int16 zérotait 99 % des synapses (poids normalisés ~0,05) : le « 0,7 ms/pas » venait d'un cerveau mort. Après fix : **1,7 ms/pas sur réseau vivant** (torch 56 ms), réflexe Shiu 130 Hz en natif, parité moteur torch ≈ OK (7,0 vs 7,9).
+- Bench déterministe run-to-run (tirages Poisson figés, Stockfish 1 thread, val-set seedé) ; garde-fou anti-train-long (120 positions par défaut, `FLY_ALLOW_LONG_TRAIN=1` pour forcer) ; `--resume-from` pour les fine-tunes courts (120 pos ≈ 1 min en natif batch 1).
+- Référence rho (looped `.best`, 3×15 pos, steps 100) : −0,10/−0,03/−0,11, stable — le readout reste à ré-entraîner, mais sur une métrique qui ne bouge plus au hasard.
+
 ## Honnêteté scientifique
 
 - Le **wiring** (connexions, types, positions) est biologique (MaleCNS v1.0, CC-BY).
@@ -317,7 +323,7 @@ docker-compose up --build
 - L'**encodage** du plateau est arbitraire (projection aléatoire de features).
 - Le **readout** est entraîné supervisément sur Stockfish.
 
-Aucune information sur les échecs n'est stockée dans le connectome. Seul le readout linéaire est entraîné.
+Aucune information sur les échecs n'est stockée dans le connectome. Seuls les readouts (linéaire + looped) sont entraînés.
 
 ## Ressources
 

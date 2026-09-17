@@ -77,21 +77,38 @@ python benchmark_fly.py --list
 
 ## Limites / honnêteté
 
-- **speed 71 ms/step** : le matmul sparse torch est le goulot sur CPU. Le vrai
-  gain exigerait GPU ou un kernel natif event-driven (comme le CSC actif du
-  worker frontend, qui fait ~15× moins de MAC à ~7 % d'activité).
-- `chess_reflex` est vide sans readout entraîné qui discrimine (le rho dégénéré
-  actuel est une vraie mesure, pas un bug).
+- **speed** : torch 56 ms/step sur MaleCNS ; le natif α event-driven fait
+  **1,7 ms/pas sur réseau vivant** (×33, mesuré 16/09 après fix `weight_scale` ;
+  variante int16 abandonnée — elle zérotait 99 % des poids normalisés).
+- `chess_reflex` (looped `.best`) : **rho ≈ −0,1 stable** (3×15 pos, bench
+  déterministe du 16/09) — le readout ne discrimine pas encore, mais la mesure
+  est fiable ; le linéaire retourne −0,25 au lieu de crasher.
 - Les formules fast_exp/fog sont **bornées à leur bande** ([0,1], [0,2]) — hors
   domaine elles dégradent ; ne pas les utiliser sans garde.
 
 ## Suite (recursive self-improvement)
 
-1. **Fine-tune complet** : `python -m flyintel.train --episodes 200` (~2h) puis
-   re-benchmark `--tag malecns-v1.1`.
+1. **Fine-tune court** : budget 120 positions par défaut (`FLY_ALLOW_LONG_TRAIN=1`
+   pour forcer), `--resume-from` pour repartir de `.best` (120 pos ≈ 1 min en
+   natif batch 1). Plus de `--episodes 200` sans opt-in (l'ancien teacher est
+   mort à 160/200 après ~14 h).
 2. **Connecter le MCP superspear** (`discover`) pour découvrir de nouvelles
    formules pour les ops du readout / du LIF à la volée, puis les ré-injecter
    dans `spear_math.py` (boucle grounded-loop : c'est le "genuine recursive
    self-improvement").
-3. **Kernel natif event-driven** pour le LIF (port du CSC actif du worker) :
-   seul vrai levier pour passer sous les ~10 ms/step sur MaleCNS CPU.
+3. **Kernel natif event-driven** : FAIT le 16/09 (1,7 ms/pas sur réseau vivant).
+   Reste : eval rho n=25–50 + tirages moyennés, puis fine-tune budgeté 600–1000 pos.
+
+## Addendum 16/09/2026 — valeurs mesurées (remplacent le tableau ci-dessus)
+
+| Domaine | Mesure (torch sauf mention) |
+|---|---|
+| feeding | 127,5–130 Hz MN9 (natif : 130) |
+| discrimination | 0,65–0,76 |
+| dynamics | 0,0 — silencieux sans drive (l'ancien 0,7 récompensait le silence) |
+| speed | torch 56 ms/pas ; **natif 1,7 ms/pas** |
+| chess_reflex | looped −0,10/−0,03/−0,11 (3×15, stable) ; linéaire −0,25 |
+| metaphor / ie_state | stubs, sep 1,3/1,7 à 100 pas (0 à 30 pas : moteurs pas recrutés) |
+
+Bench déterministe (Poisson seed 0, Stockfish 1 thread, val-set seedé),
+`verify_vs_torch` 299/300 (torch 2.9.1, à re-mesurer au pin 2.5.0).
