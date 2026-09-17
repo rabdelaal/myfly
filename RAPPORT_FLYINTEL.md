@@ -112,3 +112,14 @@ python benchmark_fly.py --list
 
 Bench déterministe (Poisson seed 0, Stockfish 1 thread, val-set seedé),
 `verify_vs_torch` 299/300 (torch 2.9.1, à re-mesurer au pin 2.5.0).
+
+## Addendum 17/09/2026 — boucle grounded : critère d'abandon B2 atteint
+
+4 itérations, que du S0 (7 sims MaleCNS), zéro diff repo — tout a été falsifié :
+temporal (latence/pic/active-frac : −0,67 seed 77, mort en réplication +0,13/−0,32),
+encodeur quality-salient (PC1 0,38/0,38/−0,03, barre pré-enregistrée ratée),
+slice DN-maxflow (PC1 −0,06), vote K5 (0,025, scores readout std 0,001).
+Verdict : les patterns distinguent les positions **orthogonalement à l'évaluation**
+(sep 1,2 mais PC1 0,21, neurones au niveau du hasard) — le goulot est le régime
+de stimulation LIF, pas le décodeur ni l'eval. Plus aucun run readout justifié ;
+prochain levier éventuel : drive recrutant les moteurs sur features qualité.
