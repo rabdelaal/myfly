@@ -192,6 +192,10 @@ class LearnRequest(BaseModel):
     dir: str = "knowledge"
 
 
+class IntentRequest(BaseModel):
+    text: str
+
+
 class ReservoirRequest(BaseModel):
     pattern: str = "flower"
     series: list[float] = []
@@ -292,6 +296,79 @@ def pet_advice():
             return {**rule_advice(stats, sleeping), "source": "rule",
                     "detail": f"typesafe indisponible ({e})"}
     return {**rule_advice(stats, sleeping), "source": "rule"}
+
+
+# Sous-système suggéré par handler (porte langage naturel : lecture seule,
+# l'exécution reste côté appelant / frontend).
+_INTENT_ENDPOINT = {"pet": "/api/pet/advice", "chess": "/api/move",
+                    "theater": "/ws/live", "lab": "/api/lab",
+                    "learn": "/api/learn"}
+# Repli mots-clés FR/EN quand TypeSafe est off.
+_INTENT_KEYWORDS = (("pet", ("nourri", "mange", "caresse", "lave", "dodo", "dors", "humeur", "feed", "pet", "clean", "sleep", "mood")),
+                    ("chess", ("coup", "joue", "échec", "échecs", "move", "play", "chess", "board")),
+                    ("theater", ("montre", "regarde", "cerveau", "direct", "watch", "show", "brain", "live")),
+                    ("lab", ("lésion", "lésionne", "guéri", "expérience", "réflexe", "lesion", "heal", "reflex")),
+                    ("learn", ("cherche", "apprends", "souviens", "savoir", "search", "learn", "remember")))
+
+
+def rule_intent(text: str) -> dict:
+    """Routage déterministe par mots-clés (repli sans réseau)."""
+    low = text.lower()
+    for handler, words in _INTENT_KEYWORDS:
+        if any(w in low for w in words):
+            return {"handler": handler, "confidence": None}
+    return {"handler": "learn", "confidence": None}  # défaut : question ouverte
+
+
+@app.post("/api/intent")
+def intent_route(req: IntentRequest):
+    """Routage langage naturel (lecture seule). TypeSafe si FLY_TS_ADVICE=1,
+    sinon repli mots-clés. Retourne handler + endpoint suggéré."""
+    if not req.text.strip():
+        raise HTTPException(400, "texte vide")
+    if os.environ.get("FLY_TS_ADVICE") == "1":
+        try:
+            from typesafe_judge import route_intent
+            r = route_intent(req.text, timeout=15)
+            h = r["answers"]["handler"]
+            return {"handler": h["choice"],
+                    "confidence": round(float(h["confidence"]), 3),
+                    "endpoint": _INTENT_ENDPOINT[h["choice"]],
+                    "source": "typesafe"}
+        except Exception as e:
+            fb = rule_intent(req.text)
+            return {**fb, "endpoint": _INTENT_ENDPOINT[fb["handler"]],
+                    "source": "rule", "detail": f"typesafe indisponible ({e})"}
+    fb = rule_intent(req.text)
+    return {**fb, "endpoint": _INTENT_ENDPOINT[fb["handler"]], "source": "rule"}
+
+
+@app.get("/api/pet/personality")
+def pet_personality():
+    """Personnalité inférée de l'historique récent (lecture seule).
+    TypeSafe si FLY_TS_ADVICE=1, sinon neutre. L'appelant mappe vers
+    température/gains (jamais ici)."""
+    pet = STATE["pet"]
+    if pet is None:
+        raise HTTPException(503, "cerveau non chargé")
+    st = pet.status()
+    if os.environ.get("FLY_TS_ADVICE") == "1":
+        try:
+            from typesafe_judge import personality_scores
+            s = st["stats"]
+            summary = (f"age {st['age_hours']}h, level {st['level']}, "
+                       f"satiety {s['satiety']:.0f}, happiness {s['happiness']:.0f}, "
+                       f"energy {s['energy']:.0f}, hygiene {s['hygiene']:.0f}, "
+                       f"mood {st['mood']}, sleeping={st['sleeping']}")
+            r = personality_scores(summary, timeout=15)
+            a = r["answers"]
+            return {"boldness": round(float(a["boldness"]["score"]), 2),
+                    "sociability": round(float(a["sociability"]["score"]), 2),
+                    "source": "typesafe"}
+        except Exception as e:
+            return {"boldness": 1.0, "sociability": 1.0, "source": "rule",
+                    "detail": f"typesafe indisponible ({e})"}
+    return {"boldness": 1.0, "sociability": 1.0, "source": "rule"}
 
 
 # --- 📚 Apprentissage web (le modèle apprend de nouvelles données à chaud) ---
