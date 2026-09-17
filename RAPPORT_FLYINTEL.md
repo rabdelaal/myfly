@@ -123,3 +123,8 @@ Verdict : les patterns distinguent les positions **orthogonalement à l'évaluat
 (sep 1,2 mais PC1 0,21, neurones au niveau du hasard) — le goulot est le régime
 de stimulation LIF, pas le décodeur ni l'eval. Plus aucun run readout justifié ;
 prochain levier éventuel : drive recrutant les moteurs sur features qualité.
+
+17/09 (soir) — drive-qualité testé et mort : quality-only −0,18/+0,31/+0,09,
+pieces-only +0,14/−0,18/−0,32, full +0,21/+0,05/+0,05 (PC1, 3×15). L'info qualité
+n'est ni dans le décodeur, ni dans l'encodeur, ni dans le drive : verdict définitif,
+pivot produit assumé.
